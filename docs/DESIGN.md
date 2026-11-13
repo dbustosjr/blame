@@ -45,7 +45,19 @@ Names here are what code uses. Values are from BRAND.md except where an accessib
 | `status.error` | #FF6B6B | Failed, blocked, regression |
 | `status.info` | #6EA8FF | Neutral system notices |
 
-Trust ramp: `trust.L0` #8A88AA (fix, was #6E6C94), `trust.L1` #6EA8FF, `trust.L2` #B9C2FF, `trust.L3` #8B7CFF, `trust.L4` #FFFFFF. Always pair a trust color with its label (for example "L2"), never color alone.
+Trust ramp (revised so it brightens in order and never reuses a status color):
+
+| Level | Value | Contrast on `bg.base` / `bg.raised` |
+|---|---|---|
+| `trust.L0` | #8A88AA | 5.80 / 4.55 |
+| `trust.L1` | #8B7CFF | 6.03 / 4.73 |
+| `trust.L2` | #A29FFF | 8.38 / 6.58 |
+| `trust.L3` | #B9C2FF | 11.46 / 8.99 |
+| `trust.L4` | #FFFFFF | 19.69 / 15.45 |
+
+Changes from BRAND.md: the original ramp used #6EA8FF for L1, which is also `status.info`, and put L3 (#8B7CFF) darker than L2 (#B9C2FF), so it did not actually brighten. L1 now takes the violet, L2 is a new midpoint between violet and lavender, and L3 takes the lavender. Always pair a trust color with its label (for example "L2"), never color alone.
+
+Autonomy presets (Manual, Guided, Autonomous, per PRD DEC-4) are shown by name with the color of the highest trust level they allow at the current level.
 
 ### Accessibility fixes (measured, WCAG 2.2)
 
@@ -108,10 +120,10 @@ Layout, top to bottom:
 3. Diffs inline: added lines on a dark green-tinted background with success text, removed lines on a dark red-tinted background with error text, line numbers muted.
 4. Working indicator: a spinner glyph in `accent`, a short status word, elapsed time, and "esc to interrupt" in muted text.
 5. Input box: rounded border, `>` prompt, multi-line with shift+enter, slash commands with an autocomplete list, `@` to mention files.
-6. Footer line: autonomy mode on the left (Manual, Auto, Autonomous, colored by trust), key hints on the right ("? for shortcuts").
+6. Footer line: autonomy preset on the left (Manual, Guided, Autonomous, colored by trust level), key hints on the right ("? for shortcuts").
 
 Behavior:
-- shift+tab cycles Manual, Auto and Autonomous, the same way Claude Code cycles its modes. Autonomous needs a one-time explicit opt-in per repo.
+- shift+tab cycles Manual, Guided and Autonomous, the same way Claude Code cycles its modes. Autonomous needs an explicit opt-in per workspace (PRD R-AUTO-1), and the cycle skips it until then.
 - Permission prompts are a bordered box with the exact command or file, and numbered choices (allow once, allow for this session, deny). Enter picks the highlighted one.
 - Colors: truecolor when `COLORTERM` is `truecolor` or `24bit`, nearest ANSI 256 otherwise, plain ANSI 16 (the BRAND.md mapping) as the final fallback. Honor `NO_COLOR`.
 - Must work in Windows Terminal, PowerShell, WSL, macOS Terminal, iTerm2 and the VS Code integrated terminal. Glyphs need ASCII fallbacks for consoles without Unicode.
