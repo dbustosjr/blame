@@ -2,7 +2,7 @@
 
 The Blame palette is built from the logo: three dark blues, a lavender accent, and white. Everything is a tint or shade of that purple-blue family except the status colors, which stay muted and only ever mean status.
 
-This is the suggested starting palette. The website design may adjust it so the site, the extension, and the terminal all feel like one product.
+This is the suggested starting palette. [DESIGN.md](DESIGN.md) is the source of truth for the final design tokens, and it adjusts a few of these colors so text and borders stay readable.
 
 ## Foundation
 
