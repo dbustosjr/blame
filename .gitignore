@@ -1,0 +1,14 @@
+node_modules/
+dist/
+out/
+build/
+.next/
+coverage/
+*.vsix
+.env
+.env.*
+!.env.example
+.DS_Store
+*.log
+__pycache__/
+.venv/
