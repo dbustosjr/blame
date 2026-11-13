@@ -553,7 +553,7 @@ Built from the final logo: three dark blues, a lavender accent and white. Everyt
 |---|---|
 | Text primary | #F2F0FF |
 | Text secondary | #A9A7CC |
-| Text muted | #6E6C94 |
+| Text muted | #8A88AA (lightened from Muse's #6E6C94 for contrast; final value in `DESIGN.md`) |
 | Border subtle | #26245F |
 | Border strong | #3B3790 |
 
@@ -589,13 +589,13 @@ Trust literally brightens as it is earned. Used for the trust badge in the exten
 
 | Level | Hex |
 |---|---|
-| L0 | #6E6C94 |
-| L1 | #6EA8FF |
-| L2 | #B9C2FF |
-| L3 | #8B7CFF |
+| L0 | #8A88AA |
+| L1 | #8B7CFF |
+| L2 | #A29FFF |
+| L3 | #B9C2FF |
 | L4 | #FFFFFF |
 
-Note: L1 shares its hex with the Info status color. Because the ramp always appears with an "L1" label, this is acceptable, but Davinci should confirm in `DESIGN.md`.
+Each step is brighter than the last, no step reuses a status color, and all pass 4.5:1 on every surface. These replace Muse's original ramp, whose L1 matched the Info color and whose L3 was darker than L2. `DESIGN.md` holds the final values.
 
 ### 9.4 Design ownership
 
