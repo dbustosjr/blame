@@ -1,0 +1,52 @@
+{
+  "name": "blame",
+  "displayName": "Blame AI",
+  "description": "A coding agent that owns its mistakes: learns from failures, reviews every agent PR, and works with your own model key.",
+  "version": "0.0.0",
+  "private": true,
+  "publisher": "blame-ai",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dbustosjr/blame"
+  },
+  "engines": {
+    "vscode": "^1.105.0",
+    "node": ">=22.19.0"
+  },
+  "categories": [
+    "AI",
+    "Programming Languages"
+  ],
+  "main": "./dist/extension.js",
+  "activationEvents": [
+    "onCommand:blame.open"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "blame.open",
+        "title": "Open",
+        "category": "Blame"
+      }
+    ]
+  },
+  "scripts": {
+    "build": "node esbuild.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:e2e": "tsc -p tsconfig.e2e.json && node esbuild.mjs && vscode-test"
+  },
+  "devDependencies": {
+    "@blame-ai/core": "workspace:*",
+    "@blame-ai/design-tokens": "workspace:*",
+    "@types/mocha": "10.0.10",
+    "@types/node": "24.19.2",
+    "@types/vscode": "1.105.0",
+    "@vscode/test-cli": "0.0.15",
+    "@vscode/test-electron": "3.1.0",
+    "esbuild": "0.28.2",
+    "typescript": "6.0.3",
+    "vitest": "5.1.0"
+  }
+}

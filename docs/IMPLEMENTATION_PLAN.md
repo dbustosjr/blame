@@ -52,7 +52,7 @@ Owned by Atlas. This track runs beside the build phases and does not block them.
 ## Phase 0: Monorepo scaffold and CI (week 1)
 
 Tasks:
-1. pnpm workspaces with `packages/core`, `packages/api-client`, `packages/theme`, `apps/cli`, `apps/vscode`, `apps/web`, `apps/api` (uv), `apps/review-action`, `functions/github-webhook`, `db/migrations`, `evals/`.
+1. pnpm workspaces with `packages/core`, `packages/api-client`, `packages/design-tokens`, `apps/cli`, `apps/vscode`, `apps/web`, `apps/api` (uv), `apps/review-action`, `functions/github-webhook`, `db/migrations`, `evals/`.
 2. TypeScript strict, Biome, Vitest; Ruff and pytest for `apps/api`. Node 22.19+ in `engines`.
 3. `.env.example`, `.gitignore` for `.env*` and `~/.blame` artifacts.
 4. CI workflows `ci.yml`, `security.yml` (gitleaks, audits), path filters, actions pinned by SHA (ARCHITECTURE section 12).
@@ -93,7 +93,7 @@ Verify:
 
 ## Phase 3: CLI TUI (week 3)
 
-Tasks: Blame theme generated from `DESIGN.md` tokens (PR #2) by `packages/theme`; header, bordered prompt box, status line (model, preset, trust, cost), tool renderers, approval prompts, preset shortcut, slash commands `/model /mode /rewind /lessons /review`; `blame run --json`; `NO_COLOR` and non-TTY output (ADR-0002).
+Tasks: Blame theme generated from `DESIGN.md` tokens (PR #2) by `packages/design-tokens`; header, bordered prompt box, status line (model, preset, trust, cost), tool renderers, approval prompts, preset shortcut, slash commands `/model /mode /rewind /lessons /review`; `blame run --json`; `NO_COLOR` and non-TTY output (ADR-0002).
 Dependencies: Phase 2; DESIGN.md merged.
 Deliverable: the CLI looks and behaves per PRD F23.2.
 Verify:

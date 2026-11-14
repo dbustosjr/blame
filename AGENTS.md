@@ -6,7 +6,7 @@ Working rules for coding agents (and people) in the Blame repo. This file says h
 
 Blame is a vendor-neutral coding agent that owns its mistakes. It ships as a VS Code extension (VS Code, Cursor, Windsurf) and a terminal app, both built on the open-source Pi agent toolkit with the user's own model key, plus a learning record that turns each failure into a lesson and a regression test, and an independent reviewer (F24) for every agent PR. The stack is TypeScript on Node 22.19+, Python FastAPI, Postgres with pgvector on InsForge, Next.js for the website and GitHub Actions for CI and review.
 
-Status (November 13, 2026): planning. The repo has docs, brand assets and one CI workflow. No app code is scaffolded yet. The docs below arrive through PRs #1 to #4; read them from those branches until they merge.
+Status (November 13, 2026): planning. The repo has docs, brand assets and one CI workflow. The Phase 0 monorepo scaffold and CI are in place; no agent features are built yet. The docs below arrive through PRs #1 to #4; read them from those branches until they merge.
 
 ## Read before you start
 
@@ -33,7 +33,7 @@ Planned layout from PRD DEC-3 and ARCHITECTURE section 3. Folders appear as phas
 ```
 packages/core/          the only package that imports Pi (@earendil-works/*)
 packages/api-client/    TypeScript client generated from apps/api/openapi.json
-packages/theme/         tokens from DESIGN.md to Pi theme JSON, webview CSS vars, ANSI palette
+packages/design-tokens/ tokens from DESIGN.md for all surfaces: ANSI palette with fallbacks, CSS vars, later the Pi theme JSON
 apps/cli/               `blame` terminal app (Pi interactive mode, Blame theme), runs core in process
 apps/vscode/            thin extension host plus React webviews, runs core as a child process over Pi RPC
 apps/web/               Next.js website: install, data page, proof page
@@ -53,23 +53,28 @@ What works today:
 
 | Task | Command |
 |---|---|
-| Em dash check (must print nothing) | `git grep -nP '\x{2014}' -- '*.md'` |
+| Install | `pnpm install --frozen-lockfile` (pnpm 10 workspaces, Node 24 per `.nvmrc`, 22.19+ in `engines`) |
+| Lint and format | `pnpm lint` (Biome, check only), `pnpm format` (Biome, writes) |
+| Typecheck | `pnpm typecheck` |
+| Unit tests | `pnpm test` (Vitest in every package, plus the checks in `scripts/`) |
+| Build | `pnpm build` |
+| Extension integration tests | `xvfb-run -a pnpm --filter blame test:e2e` on Linux (`vscode-test` from `@vscode/test-cli`) |
+| Design check | `npx impeccable@4.9.1 detect --github apps/web` (ignores in `.impeccable/config.json`) |
+| Import boundary | `pnpm check:boundary` (only `packages/core` may import `@earendil-works/*`) |
+| Em and en dash check | `pnpm check:dashes` (Markdown tracked by git) |
 | Secret scan | runs in CI as `.github/workflows/secret-scan.yml` (gitleaks) on every PR and push to main |
+| CI | `.github/workflows/ci.yml` runs all of the above except the secret scan, on every PR and push to main |
 
 Planned, not yet available (from IMPLEMENTATION_PLAN Phase 0 and ARCHITECTURE section 12). Do not claim these pass until the tooling exists and you ran them:
 
 | Task | Planned command | Planned, not yet available |
 |---|---|---|
-| Install | `pnpm install` (pnpm workspaces, Node 22.19+) | yes |
-| Build and test everything | `pnpm -r build && pnpm -r test` | yes |
-| Lint and format | Biome (TypeScript), Ruff (Python) | yes |
-| Unit tests | Vitest (TypeScript), pytest (`apps/api`, uv) | yes |
-| Extension integration tests | `@vscode/test-electron` (via `vscode-test` from `@vscode/test-cli`) | yes |
+| Python lint and tests | Ruff and pytest (`apps/api`, uv) | yes |
+| Extension integration tests on Windows | `@vscode/test-electron` on a Windows runner | yes |
 | Website E2E and screenshots | Playwright at 375, 768, 1440 plus axe | yes |
-| Design check | Impeccable detector (exact command to be set in `web.yml`) | yes |
 | Evals | `evals/` TypeScript harness, JSONL results | yes |
 | DB migrations | `npx @insforge/cli db migrations up --all`, from CI only, never by hand | yes |
-| Product CLI | `blame`, `blame run "task" --json`, `blame review`, `blame fix <id>`, `blame lessons`, `blame export`, `blame revoke`, `blame mcp`, `blame init review` | yes |
+| Product CLI (today only `blame`, `--mode`, `--version` and `--help` exist) | `blame`, `blame run "task" --json`, `blame review`, `blame fix <id>`, `blame lessons`, `blame export`, `blame revoke`, `blame mcp`, `blame init review` | yes |
 
 If you add a real script, update this table in the same PR.
 

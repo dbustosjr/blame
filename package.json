@@ -1,0 +1,31 @@
+{
+  "name": "blame-monorepo",
+  "private": true,
+  "description": "Blame: a vendor-neutral coding agent that owns its mistakes.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "packageManager": "pnpm@10.34.6",
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "scripts": {
+    "lint": "biome ci .",
+    "format": "biome check --write .",
+    "typecheck": "tsc -p scripts/tsconfig.json && pnpm -r typecheck",
+    "test": "vitest run --config scripts/vitest.config.ts && pnpm -r test",
+    "build": "pnpm -r build",
+    "check:boundary": "node scripts/check-import-boundary.mjs",
+    "check:dashes": "node scripts/check-dashes.mjs"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.6.7",
+    "@types/node": "24.19.2",
+    "typescript": "6.0.3",
+    "vitest": "5.1.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
+  }
+}
