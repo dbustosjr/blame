@@ -183,7 +183,7 @@ flowchart TD
 
 **Errors.** Provider down or rate limited: message, retry, `/model` to switch. Offline: local brain still injects, sync waits. Budget hit or loop detected: hard stop with summary.
 
-**Non-interactive `blame run`.** `blame run "task" --json` streams JSONL events for scripts and CI. The PRD writes the flag as `--mode guided`; the TRD writes `--preset auto` (**Pending**, see note at the end). Never prompts: any action that needs approval ends the run with a non-zero exit and an event naming the action. Autonomous without opt-in or without sandbox exits with an error before any tool call.
+**Non-interactive `blame run`.** `blame run "task" --json` streams JSONL events for scripts and CI. The flag is `--mode`, for example `--mode guided` (PRD DEC-11). "Preset" stays the name for the setting itself. Never prompts: any action that needs approval ends the run with a non-zero exit and an event naming the action. Autonomous without opt-in or without sandbox exits with an error before any tool call.
 
 **Other commands.** `blame lessons`, `blame export`, `blame revoke`, `blame fix <finding-id>` (opens a session with the finding preloaded), `blame mcp` (stdio MCP server for Cursor and Claude Code, Flow F), `blame init review` (writes the reviewer workflow, section 4).
 
@@ -292,7 +292,6 @@ States: works at 375, 768 and 1440; keyboard reachable with visible focus; `pref
 
 Each screen above must define purpose, required content, primary action, secondary action, loading, empty and error states before it is built. Gaps found while writing this:
 
-- The CLI flag `--mode` (PRD) or `--preset` (TRD) is **Pending**.
 - DESIGN.md's website page list does not yet include the data page, the BYOK explanation or the proof page that PRD F23.3 requires.
 - PRD F23.1 asks for per-hunk accept or reject; DESIGN.md says use VS Code's native diff editor. This doc assumes per-hunk actions on top of the native diff editor; Forge to confirm it is feasible.
 - Whether a safe-zone approval can ever be "for this session" is not specified; this doc assumes one approval per action.
