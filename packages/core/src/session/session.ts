@@ -10,6 +10,7 @@ import {
   SessionManager,
   SettingsManager,
 } from "@earendil-works/pi-coding-agent";
+import { applyBlameAuthPolicy, policyCredentialStore } from "../auth/policy.js";
 import { type KeyStore, keyStoreCredentials } from "../keys/keystore.js";
 import { defaultPolicy } from "../policy/seed.js";
 import type { PolicyConfig, PolicyContext } from "../policy/types.js";
@@ -53,7 +54,8 @@ export interface BlameModelRuntimeOptions {
 /**
  * A Pi `ModelRuntime` that never touches `~/.pi`: credentials come from Blame (KeyStore or
  * memory) instead of Pi's `auth.json`, models come from Pi's built-in catalog with no
- * `models.json`, and there is no network catalog refresh at startup.
+ * `models.json`, and there is no network catalog refresh at startup. Blame's auth policy is
+ * applied: Claude subscription OAuth and other non-allowlisted logins are removed (auth/policy.ts).
  */
 export async function createBlameModelRuntime(
   options: BlameModelRuntimeOptions = {},
@@ -61,7 +63,13 @@ export async function createBlameModelRuntime(
   const credentials =
     options.credentials ??
     (options.keys ? keyStoreCredentials(options.keys) : new InMemoryCredentialStore());
-  return ModelRuntime.create({ credentials, modelsPath: null, refreshOnCreate: false });
+  const runtime = await ModelRuntime.create({
+    credentials: policyCredentialStore(credentials),
+    modelsPath: null,
+    refreshOnCreate: false,
+  });
+  applyBlameAuthPolicy(runtime);
+  return runtime;
 }
 
 export interface BlameSessionOptions {
@@ -114,6 +122,8 @@ export async function createBlameSession(options: BlameSessionOptions): Promise<
   const modelRuntime =
     options.modelRuntime ??
     (await createBlameModelRuntime(options.keys ? { keys: options.keys } : {}));
+  // A host-supplied runtime gets the same auth policy (idempotent for Blame's own).
+  applyBlameAuthPolicy(modelRuntime);
   const { providerId, modelId } = options.model;
   if (options.apiKey !== undefined) await modelRuntime.setRuntimeApiKey(providerId, options.apiKey);
   const model = modelRuntime.getModel(providerId, modelId);
