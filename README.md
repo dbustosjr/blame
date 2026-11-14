@@ -51,3 +51,5 @@ Planning and early build. Expect things to move quickly and change often.
 ## License
 
 Blame is open source under the [Apache License 2.0](LICENSE). The Blame name and logo are trademarks and are not covered by the license. See [NOTICE](NOTICE).
+
+To report a security issue privately, see [SECURITY.md](SECURITY.md).
