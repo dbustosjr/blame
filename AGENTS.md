@@ -6,7 +6,7 @@ Working rules for coding agents (and people) in the Blame repo. This file says h
 
 Blame is a vendor-neutral coding agent that owns its mistakes. It ships as a VS Code extension (VS Code, Cursor, Windsurf) and a terminal app, both built on the open-source Pi agent toolkit with the user's own model key, plus a learning record that turns each failure into a lesson and a regression test, and an independent reviewer (F24) for every agent PR. The stack is TypeScript on Node 22.19+, Python FastAPI, Postgres with pgvector on InsForge, Next.js for the website and GitHub Actions for CI and review.
 
-Status (November 13, 2026): planning. The repo has docs, brand assets and one CI workflow. The Phase 0 monorepo scaffold and CI are in place; no agent features are built yet. The docs below arrive through PRs #1 to #4; read them from those branches until they merge.
+Status (November 14, 2026): the Phase 0 monorepo scaffold and CI have merged, and Phase 1 (Pi spike and core skeleton) is in progress. The docs below are on `main`.
 
 ## Read before you start
 
@@ -41,7 +41,7 @@ Some contributors also have general skills installed globally. If you have a ski
 
 | Work | Global skills, if installed | Without them, follow |
 |---|---|---|
-| Every change | `test-driven-development`, `systematic-debugging`, `verification-before-completion` | `blame-dev-process`, [TESTING.md](docs/TESTING.md) |
+| Every change | `test-driven-development`, `systematic-debugging`, `verification-before-completion`, `devdocs-lookup` | `blame-dev-process`, [TESTING.md](docs/TESTING.md) |
 | Core and backend (`packages/core`, `apps/api`, the Action, webhooks) | `system-design-production-readiness`, `security-audit` | [ARCHITECTURE](docs/ARCHITECTURE.md), [THREAT_MODEL](docs/THREAT_MODEL.md) |
 | Website (`apps/web`) and any UI | `design-system-writer`, `shadcn` | [DESIGN.md](docs/DESIGN.md) |
 | Changing or adding an ADR | `architecture-defense` | [docs/adr/](docs/adr/) |
