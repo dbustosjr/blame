@@ -94,7 +94,7 @@ Effective permission for a tool call (R-AUTO-2): `min(preset.ceiling, earned lev
 | Guided (default) | L2 | Low-risk steps automatic (checkpoints, lessons, tests, allow-listed commands); ask for risky steps | Writes limited to workspace; egress only to model provider and docs hosts |
 | Autonomous (opt-in per workspace) | L3 (L4 Later) | Ask only for safe zones and risky-action classes | Full `srt` profile: workspace-only writes, egress allow-list, CPU, memory and time limits. Refuses to start without sandbox |
 
-Naming note: docs use "Guided" and `--mode guided` to match PRD v0.2. The final name of the middle preset is pending David (OQ-6).
+Naming note: docs use "Guided" and `--mode guided` to match PRD v0.2. David confirmed Guided as the final name on 2026-11-13 (OQ-6, resolved).
 
 Capabilities used by the gate (from PRD F2): `read`, `run_tests`, `edit_workspace`, `open_draft_pr`, `run_allowlisted`, `open_pr`, `edit_ci`, `edit_deps`, `network_sandbox`, `deploy_preview`. Risky-action classes (always at least "ask" below L3): `migration`, `delete_outside_branch`, `secret_access`, `egress_outside_allowlist`, `ci_change`, `force_push`.
 
@@ -271,4 +271,4 @@ Two transports: `blame mcp` (stdio, recommended for Cursor and Claude Code; read
 | OQ-3 | Does David have GitHub Pro (for example through the Student Developer Pack)? | Branch protection on the private repo (C-3) |
 | OQ-4 | InsForge: scale to zero for custom compute, backup policy on Free | Always-on API and NFR-9 |
 | OQ-5 | Node version in Cursor's and Windsurf's extension hosts | VS Code 1.142 ships Node 24.21 ([vscode-versions](https://github.com/ewanharris/vscode-versions)); forks may lag. Core needs 22.19+ |
-| OQ-6 | Final name of the middle preset (docs use Guided to match the PRD; David's earlier wording was Auto) | Seed label and CLI help text; pending David |
+| OQ-6 | Final name of the middle preset (docs use Guided to match the PRD; David's earlier wording was Auto) | Seed label and CLI help text; resolved 2026-11-13: Guided |

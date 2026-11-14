@@ -14,7 +14,7 @@ Where people go in Blame, what moves them forward, what happens when something f
 How to read it:
 - Blame is local-first. The agent, keys, code index and a brain cache live on the user's machine. A Blame account (device login) is optional and only adds sync, the team brain, the GitHub App and the proof page (ARCHITECTURE 1, 8).
 - "Calls" lists the endpoint or local step behind a screen. Local steps have no endpoint.
-- Preset names are Manual, **Guided** and Autonomous, as in the PRD. The middle name is **Pending** (David may choose "Auto", TRD OQ-6).
+- Preset names are Manual, **Guided** and Autonomous, as in the PRD. David confirmed Guided on 2026-11-13 (TRD OQ-6, resolved).
 - Every screen has default, hover, focus, active, disabled, loading, empty, error and permission-denied states (DESIGN.md). This file lists the ones that change the flow.
 
 ## 1. Shared rules every surface follows
@@ -292,7 +292,7 @@ States: works at 375, 768 and 1440; keyboard reachable with visible focus; `pref
 
 Each screen above must define purpose, required content, primary action, secondary action, loading, empty and error states before it is built. Gaps found while writing this:
 
-- Preset name Guided or Auto, and the CLI flag `--mode` (PRD) or `--preset` (TRD), are **Pending**.
+- The CLI flag `--mode` (PRD) or `--preset` (TRD) is **Pending**.
 - DESIGN.md's website page list does not yet include the data page, the BYOK explanation or the proof page that PRD F23.3 requires.
 - PRD F23.1 asks for per-hunk accept or reject; DESIGN.md says use VS Code's native diff editor. This doc assumes per-hunk actions on top of the native diff editor; Forge to confirm it is feasible.
 - Whether a safe-zone approval can ever be "for this session" is not specified; this doc assumes one approval per action.

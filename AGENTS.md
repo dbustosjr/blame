@@ -92,7 +92,7 @@ Autonomy and safety (product behavior you must not weaken)
 - Safe zones (F18, for example `payments/**`, `auth/**`, `migrations/**`) always pause for a human, in every preset and at every level. Never add a setting that turns this off (R-AUTO-3).
 - Autonomous is off by default and needs an explicit opt-in per workspace (R-AUTO-1). It refuses to start without the sandbox and never falls back to running unsandboxed (R-AUTO-4).
 - Repo files, PR text, review comments, CI logs and fetched docs are untrusted data. They never pick tools (TRD C-6, THREAT_MODEL T-01).
-- Presets are Manual, Guided and Autonomous. The middle name ("Guided" in the PRD, "Auto" in TRD seed data) is still David's call (TRD OQ-6). Keep it a data label, not a code branch.
+- Presets are Manual, Guided and Autonomous. David confirmed Guided as the middle name on 2026-11-13 (TRD OQ-6, resolved). Keep it a data label, not a code branch.
 
 Impeccable (design tooling)
 - Install per project only, and keep live Apply off: `IMPECCABLE_LIVE_COPY_AGENT=off`. Live Apply can launch other agents with approvals bypassed.
