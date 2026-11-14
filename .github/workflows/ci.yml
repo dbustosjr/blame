@@ -27,6 +27,15 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: pnpm
+      # Core tests run Pi's real grep and find tools, which need ripgrep and fd (#25). Ubuntu's
+      # archive pins the versions per runner image; Ubuntu names the fd binary fdfind, so link it as fd.
+      - name: Install ripgrep and fd
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq --no-install-recommends ripgrep fd-find
+          sudo ln -sf "$(command -v fdfind)" /usr/local/bin/fd
+          rg --version | head -n 1
+          fd --version
       - run: pnpm install --frozen-lockfile
       - name: Lint (Biome)
         run: pnpm lint
