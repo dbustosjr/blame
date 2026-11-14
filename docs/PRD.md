@@ -39,7 +39,7 @@
 
 **Pitch.** "Keep your agent, or use ours. Either way, Blame remembers, reviews and proves." Neutrality comes from three places: any model provider through Pi and bring-your-own-key, a portable learning record, and a reviewer that works on any agent's PRs.
 
-**Honest timeline.** The full MVP is about 8 to 10 weeks for one builder with AI help. A first usable release at the end of week 6 is possible if David approves the cut list in section 12.3.
+**Honest timeline.** The full MVP is about 8 to 10 weeks for one builder with AI help. The first usable release is at the end of week 6, using the cut list in section 12.3 as the release order (D3).
 
 **MVP goal.** 5 small teams or solo developers using Blame for real work before the YC application (date to be set, see D4).
 
@@ -169,7 +169,7 @@ v0.1 tried to be two products at once (a companion record and our own agent). v0
 
 ### 7.1 Feature table
 
-"FUR" = first usable release (end of week 6), **Proposal** pending David's yes on the cut list.
+"FUR" = first usable release (end of week 6), per the cut list (D3, decided 2026-11-13).
 
 | ID | Feature | Area | Priority | In FUR (Proposal) | Change vs v0.1 |
 |---|---|---|---|---|---|
@@ -657,7 +657,7 @@ ADRs Forge owns (from the skill plan): Pi versus a custom loop (decided, record 
 
 ### 12.1 Why the timeline changed
 
-v0.1 promised about 3 weeks for roughly 11 MVP items. v0.2 adds an extension, a custom TUI, a sandbox that enforces autonomy, the second brain and an independent reviewer. For one builder with AI help, the full MVP is realistically **8 to 10 weeks** after Week 0. A first usable release at the **end of week 6** needs the cut list in 12.3.
+v0.1 promised about 3 weeks for roughly 11 MVP items. v0.2 adds an extension, a custom TUI, a sandbox that enforces autonomy, the second brain and an independent reviewer. For one builder with AI help, the full MVP is realistically **8 to 10 weeks** after Week 0. The first usable release lands at the **end of week 6** by following the cut list in 12.3.
 
 ### 12.2 Week 0 (this week and next, before building)
 
@@ -675,7 +675,7 @@ v0.1 promised about 3 weeks for roughly 11 MVP items. v0.2 adds an extension, a 
 
 Design-partner outreach then **starts in Week 1** (moved from Week 3 in v0.1), once David approves the drafts.
 
-### 12.3 MVP cut list (Proposal, pending David's yes)
+### 12.3 MVP cut list (Decided as release order, D3)
 
 To reach a first usable release (FUR) at the end of week 6, defer these until after FUR:
 
@@ -699,7 +699,7 @@ Weeks start after Week 0. Each milestone ends with a verification check that can
 | 1 | Setup and Pi spike | Repo scaffold and CI, Pi spike with BYOK, partner track starts (target list and outreach drafts, David approves every message) | Pi runs a tool-calling task from `packages/core` in CI; outreach drafts are ready for David |
 | 2 to 3 | Core and CLI | `packages/core` on Pi: guardrails (F15), reproduce-before-fix (F8), SDLC loop (F9), docs-first (F11), local brain; CLI TUI v0 with palette in week 3. BYOK and ChatGPT sign-in (DEC-8) | A seeded bug task in the CLI produces a failing reproduction, a fix and a PR on a test repo, with cost shown |
 | 4 to 5 | Extension, autonomy and install pages | Static install, BYOK and data pages in week 4; `apps/vscode` chat panel, diffs, checkpoints (F10), presets and trust (F2, R-AUTO), safe zones (F18), local sandbox, secrets (F17), audit log (F4); first partner installs on the CLI | Same task in VS Code and Cursor in all three presets; sandbox escape tests pass; install page live |
-| 5 to 6 | Backend, learning record and brain (**FUR at end of week 6 if cut list approved**) | Backend and MCP server (stdio first), F3 lessons and regression tests, F6 brain (links, lifecycle, dedupe, staleness, injection, hybrid search, export) | A repeated mistake is prevented or caught and the chart shows it; retrieval eval meets G6; 2 design partners installed |
+| 5 to 6 | Backend, learning record and brain (**FUR at end of week 6**) | Backend and MCP server (stdio first), F3 lessons and regression tests, F6 brain (links, lifecycle, dedupe, staleness, injection, hybrid search, export) | A repeated mistake is prevented or caught and the chart shows it; retrieval eval meets G6; 2 design partners installed |
 | 7 to 8 | Independent review | Thin F24 first in week 7, then full F24: self-updating index, cross-file detection, benchmark at 25 or more bugs; GitHub App failure capture; thin proof page | Reviewer meets G5 on the benchmark; a Claude Code PR gets a review and a one-click fix |
 | 9 to 10 | Hardening and partners | Security audit, R-SEC cross-tenant suite, R-RET deletion jobs, F7 if kept, polish with Impeccable, demo video | 5 design partners active; release gates in 12.5 pass |
 
@@ -768,7 +768,7 @@ The chart is the core proof, so the rule must be strict, public and shown in the
 
 | Risk | Mitigation |
 |---|---|
-| Solo-builder bandwidth; the MVP slips past 10 weeks | Approve the cut list; hold scope fixed; every new idea goes to Next |
+| Solo-builder bandwidth; the MVP slips past 10 weeks | Follow the cut list (D3); hold scope fixed; every new idea goes to Next |
 | Provider terms change (ChatGPT sign-in, Anthropic policies) | BYOK API keys always work; re-check terms each release (R-BYOK-2) |
 | Pi changes its API or slows down | Pin versions; wrap Pi behind `packages/core` interfaces; MIT license allows a fork |
 | Platforms (Cursor, Anthropic, OpenAI) ship similar memory or review | Neutrality, portable export, published proof and benchmark |
