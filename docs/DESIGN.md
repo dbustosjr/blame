@@ -100,7 +100,7 @@ Contrast ratios I computed against each background:
 
 ## Website
 
-Pages (PRD F23.3): home, install (extension and terminal tabs), how keys work (bring your own key and ChatGPT sign-in), privacy and data retention, a thin proof page (an opt-in public share of a project's never-repeated chart), docs entry, and changelog. Built with Next.js, Tailwind and shadcn/ui, with tokens mapped into the Tailwind theme and shadcn CSS variables.
+Pages (PRD F23.3 and IMPLEMENTATION_PLAN Phase 8a): home (`/`), install with extension and terminal sections (`/install`), how keys work with bring your own key and ChatGPT sign-in (`/keys`), why Claude subscriptions can't be used (`/keys/claude`), privacy and data retention (`/data`), MCP setup (`/mcp`), docs entry (`/docs`), a thin proof page (an opt-in public share of a project's never-repeated chart), and changelog. Built with Next.js, Tailwind and shadcn/ui, with tokens mapped into the Tailwind theme and shadcn CSS variables.
 
 Home, top to bottom:
 1. Nav: wordmark, Docs, Changelog, GitHub, and an "Install" primary button.
@@ -109,7 +109,7 @@ Home, top to bottom:
 4. Proof sections, one per pillar: learning from failures, the second brain, independent review with one-click fix, autonomy levels, bring your own key. Each uses a real UI or terminal capture, not a mockup.
 5. Install block repeated, then a short footer.
 
-Install page: copyable commands with a copy button and confirmation, tabs for Windows, macOS and Linux, a "check it worked" step, and a troubleshooting list. Every command shown must be tested in CI.
+Install page: copyable commands with a copy button and confirmation, tabs for Windows, macOS and Linux, a "check it worked" step, and a troubleshooting list. Every command shown must be tested in CI. Until the first release, the page shows a "Not released yet" notice in place of commands, and the copy buttons and OS tabs arrive with the first tested command.
 
 Rules: max content width 1200px, 12-column grid, generous section spacing (96 to 128px), one accent per viewport. Desktop, tablet (768px) and mobile (375px) screenshots are required in every UI PR.
 
