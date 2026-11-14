@@ -151,7 +151,7 @@ describe("runEngineServer", () => {
 
   it("never writes the API key to stdout, even in an init error", async () => {
     const h = harness();
-    const key = "sk-blame-test-never-echo-123";
+    const key = "sk-blame-test-not-a-real-key";
     h.write(initRequest("1", { apiKey: key, model: { providerId: "faux", modelId: key } }));
     expect(await h.response("1")).toMatchObject({ ok: false, error: { code: "init_failed" } });
     h.write({ v: 1, type: "request", id: "s", method: "blame_state" });

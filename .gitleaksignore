@@ -1,0 +1,4 @@
+# Fake test key in an earlier commit of PR #35 (gitleaks generic-api-key). The test now uses the
+# repo's low-entropy fake key. History is not rewritten (no force-push), so the old commit's
+# finding is ignored here by fingerprint.
+4feb94498ff4aeec3d81c5b330921a634e45ad8e:packages/core/test/rpc-server.test.ts:generic-api-key:154
