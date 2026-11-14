@@ -195,4 +195,39 @@ describe("Blame auth policy (PRD DEC-2, R-BYOK-2)", () => {
       rmSync(configDir, { recursive: true, force: true });
     }
   });
+
+  it("a host-supplied runtime whose store holds a Claude OAuth token never uses it in a session", async () => {
+    const { fauxProvider } = await import("@earendil-works/pi-ai");
+    const store = new InMemoryCredentialStore();
+    await store.modify("anthropic", async () => fakeOAuth());
+    const pi = await rawPiRuntime(store);
+    // Premise: before Blame touches it, Pi would use the stored subscription token.
+    await pi.refresh({ allowNetwork: false });
+    expect(pi.isUsingOAuth("anthropic")).toBe(true);
+
+    pi.registerNativeProvider(fauxProvider().provider);
+    const workDir = mkdtempSync(join(tmpdir(), "blame-auth-work-"));
+    const configDir = mkdtempSync(join(tmpdir(), "blame-auth-config-"));
+    const session = await createBlameSession({
+      cwd: workDir,
+      configDir,
+      model: { providerId: "faux", modelId: "faux-1" },
+      policyContext: {
+        presetId: "guided",
+        earnedLevelId: "L2",
+        optedIn: false,
+        sandboxAvailable: false,
+      },
+      modelRuntime: pi,
+    });
+    try {
+      await pi.refresh({ allowNetwork: false });
+      expect(pi.isUsingOAuth("anthropic")).toBe(false);
+      expect(String(JSON.stringify(await pi.getAuth("anthropic")))).not.toContain("fake-access");
+    } finally {
+      session.dispose();
+      rmSync(workDir, { recursive: true, force: true });
+      rmSync(configDir, { recursive: true, force: true });
+    }
+  });
 });
