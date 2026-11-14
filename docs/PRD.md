@@ -476,6 +476,7 @@ The preset is what the user asks for. The trust level is what the agent has earn
 | R-AUTO-4 | Autonomous mode refuses to start if the sandbox is unavailable. It never falls back to unsandboxed execution |
 | R-AUTO-5 | The current preset and trust level are always visible (extension status bar, TUI status line) using the trust ramp colors |
 | R-AUTO-6 | Every preset change is an audit event |
+| R-AUTO-7 | Until the local sandbox (ADR-0005) and secret redaction in tool output (Phase 2) have both shipped, shell commands ask for approval in every preset, Autonomous included. This is a release gate for any build that lets Autonomous run shell commands unattended. Secret file reads and edits always ask, in every preset (PR #24) |
 
 ### 8.3 Security and tenant isolation (R-SEC, MVP)
 
