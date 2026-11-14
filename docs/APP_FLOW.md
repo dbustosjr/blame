@@ -90,7 +90,7 @@ flowchart TD
 **Install.** Purpose: get the extension in. Marketplace or Open VSX (Cursor and Windsurf use Open VSX). Activation registers commands only (under 1 s, R-PERF-5). Error: Node too old in the editor host and none on PATH shows an install prompt (ARCHITECTURE 4).
 
 **Provider setup.** Purpose: connect a model the user already pays for (DEC-2).
-- Inputs: provider, API key; or "Sign in with ChatGPT" (**Pending** the open-source client decision, TRD OQ-2; until then BYOK only); Anthropic is API key only, with a short note on why a Claude.ai subscription cannot be used (R-BYOK-3).
+- Inputs: provider, API key; or "Sign in with ChatGPT" (supported at launch because the client is open source, PRD DEC-8, TRD OQ-2 resolved); Anthropic is API key only, with a short note on why a Claude.ai subscription cannot be used (R-BYOK-3).
 - Saves to VS Code SecretStorage. Key is masked and never shown again.
 - Calls: none to Blame. A tiny test call goes from the device to the provider.
 - Errors: invalid key (provider says 401), no credit or quota, provider unreachable (offline): each shows a plain message, keeps the form, offers retry. No key saved on failure.
