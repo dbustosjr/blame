@@ -98,34 +98,44 @@ export const ansi16Codes = {
 export type Ansi16Name = keyof typeof ansi16Codes;
 
 /**
- * ANSI 16 fallback per token. DESIGN.md refers to a BRAND.md mapping that is not in the repo yet,
- * so this mapping is a Phase 0 assumption to confirm with Davinci. Background tokens map to null:
- * in 16 color mode Blame keeps the user's terminal background.
+ * One ANSI 16 style: a named color, or null for the terminal's default foreground (no color
+ * code). Bold and dim come from DESIGN.md and are applied only in 16-color mode. Background
+ * tokens use color null: Blame never sets a background, so the user's theme stays readable.
  */
-export const ansi16: Readonly<Record<AnyColorToken, Ansi16Name | null>> = {
-  "bg.base": null,
-  "bg.panel": null,
-  "bg.raised": null,
-  accent: "brightBlue",
-  "text.heading": "brightWhite",
-  "text.primary": "brightWhite",
-  "text.secondary": "white",
-  "text.muted": "white",
-  "text.disabled": "brightBlack",
-  "border.subtle": "brightBlack",
-  "border.strong": "brightBlack",
-  "border.control": "blue",
-  "status.success": "green",
-  "status.warning": "yellow",
-  "status.error": "red",
-  "status.info": "cyan",
-  "trust.L0": "white",
-  "trust.L1": "magenta",
-  "trust.L2": "brightMagenta",
-  "trust.L3": "brightBlue",
-  "trust.L4": "brightWhite",
-  "ansi.brightBlack": "brightBlack",
-  "ansi.brightBlackText": "brightBlack",
+export interface Ansi16Style {
+  readonly color: Ansi16Name | null;
+  readonly bold?: boolean;
+  readonly dim?: boolean;
+}
+
+/**
+ * ANSI 16 fallback per token, from the "Terminal ANSI 16" table in DESIGN.md.
+ * White and bright white are never used for text: they disappear on light themes.
+ */
+export const ansi16: Readonly<Record<AnyColorToken, Ansi16Style>> = {
+  "bg.base": { color: null },
+  "bg.panel": { color: null },
+  "bg.raised": { color: null },
+  accent: { color: "brightBlue" },
+  "text.heading": { color: null, bold: true },
+  "text.primary": { color: null },
+  "text.secondary": { color: null, dim: true },
+  "text.muted": { color: "brightBlack" },
+  "text.disabled": { color: "brightBlack" },
+  "border.subtle": { color: "brightBlack" },
+  "border.strong": { color: "brightBlack" },
+  "border.control": { color: "blue" },
+  "status.success": { color: "green" },
+  "status.warning": { color: "yellow" },
+  "status.error": { color: "red" },
+  "status.info": { color: "cyan" },
+  "trust.L0": { color: "brightBlack" },
+  "trust.L1": { color: "magenta" },
+  "trust.L2": { color: "brightMagenta" },
+  "trust.L3": { color: "brightBlue" },
+  "trust.L4": { color: null, bold: true },
+  "ansi.brightBlack": { color: "brightBlack" },
+  "ansi.brightBlackText": { color: "brightBlack" },
 };
 
 const ESC = "\u001b[";
@@ -142,7 +152,7 @@ export function fgSequence(token: AnyColorToken, level: ColorLevel): string {
     case "ansi256":
       return `${ESC}38;5;${nearestAnsi256(hex(token))}m`;
     case "ansi16": {
-      const name = ansi16[token];
+      const name = ansi16[token].color;
       return name ? `${ESC}${ansi16Codes[name]}m` : "";
     }
   }
@@ -160,7 +170,7 @@ export function bgSequence(token: AnyColorToken, level: ColorLevel): string {
     case "ansi256":
       return `${ESC}48;5;${nearestAnsi256(hex(token))}m`;
     case "ansi16": {
-      const name = ansi16[token];
+      const name = ansi16[token].color;
       return name ? `${ESC}${ansi16Codes[name] + 10}m` : "";
     }
   }
@@ -168,9 +178,19 @@ export function bgSequence(token: AnyColorToken, level: ColorLevel): string {
 
 export const RESET = `${ESC}0m`;
 const BOLD = `${ESC}1m`;
+const DIM = `${ESC}2m`;
 
 export interface PaintOptions {
   readonly bold?: boolean;
+}
+
+/** SGR open sequence for a token in 16-color mode, including bold and dim from DESIGN.md. */
+function ansi16Open(token: AnyColorToken, options: PaintOptions): string {
+  const style = ansi16[token];
+  const bold = Boolean(options.bold || style.bold);
+  const dim = Boolean(style.dim);
+  const color = style.color ? `${ESC}${ansi16Codes[style.color]}m` : "";
+  return `${bold ? BOLD : ""}${dim ? DIM : ""}${color}`;
 }
 
 /** Wrap text in a token color. At level "none" the text comes back unchanged. */
@@ -181,7 +201,10 @@ export function paint(
   options: PaintOptions = {},
 ): string {
   if (level === "none") return text;
-  const open = `${options.bold ? BOLD : ""}${fgSequence(token, level)}`;
+  const open =
+    level === "ansi16"
+      ? ansi16Open(token, options)
+      : `${options.bold ? BOLD : ""}${fgSequence(token, level)}`;
   return open ? `${open}${text}${RESET}` : text;
 }
 
