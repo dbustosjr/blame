@@ -2,7 +2,7 @@
 
 <p align="center"><img src="brand/logo-full-dark.png" alt="Blame logo" width="480"></p>
 
-Blame is a coding agent that learns from its own mistakes and can show you the proof.
+Blame (also listed as Blame AI) is a coding agent that learns from its own mistakes and can show you the proof.
 
 Most coding agents forget. A reviewer rejects a change, a test fails, a fix gets reverted, and a week later the same kind of mistake shows up again. Blame keeps a record of what went wrong, turns each failure into a lesson backed by a test or a check, and tracks whether that mistake ever comes back. Over time you get a clear picture of how the agent is improving on your codebase, not just a promise that it is.
 
@@ -45,3 +45,7 @@ The folders fill in as the build moves forward. Logo files and core colors are i
 ## Status
 
 Planning and early build. Expect things to move quickly and change often.
+
+## License
+
+Blame is open source under the [Apache License 2.0](LICENSE). The Blame name and logo are trademarks and are not covered by the license. See [NOTICE](NOTICE).
