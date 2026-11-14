@@ -131,6 +131,14 @@ Hooks Blame installs:
 6. Checkpoints and audit events are written to local SQLite, then uploaded in batches (`POST /v1/events:batch`) when sync is on.
 7. Diffs stream back to the webview for per-hunk accept or reject. Errors and loading states are shown per step; a lost child process is restarted and the session resumed from Pi's session file.
 
+### Per-hunk accept and reject in the extension (F23.1)
+
+PRD F23.1 requires accept or reject per hunk, and that works alongside the native diff editor. As of 13 November 2026, the stable VS Code API ([vscode-api](https://code.visualstudio.com/api/references/vscode-api)) has no method that accepts or rejects an individual hunk inside the native diff editor. The built-in `vscode.diff` command ([built-in commands](https://code.visualstudio.com/api/references/commands)) is used only to open a side-by-side view of the original file and the proposed change.
+
+Per-hunk Accept and Reject are provided on Blame's proposed-change view, using a `CodeLensProvider` and/or editor decorations (`window.createTextEditorDecorationType` and `TextEditor.setDecorations`) on the proposed document. Accepting or rejecting a hunk applies the decision with a `WorkspaceEdit` through `workspace.applyEdit`.
+
+Proposed APIs that attach actions to the native diff editor, including `commands.registerDiffInformationCommand` (proposed `diffCommand`; see [vscode#84899](https://github.com/microsoft/vscode/issues/84899)) and the `contribDiffEditorGutterToolBarMenus` / `diffEditor/gutter/hunk` menu, are not stable and must not be used for Marketplace or Open VSX publishing (FR-EXT-3).
+
 ### 5.2 Failure capture
 
 1. GitHub sends a webhook (for example a revert PR merged) to the edge function.
@@ -325,7 +333,7 @@ Hybrid retrieval in both: full-text (Postgres `tsvector` or SQLite FTS5) plus ve
 
 | Where | Mechanism | What it enforces |
 |---|---|---|
-| Device, Auto preset | `srt` wraps each bash tool call | Writes only in the workspace (plus temp); egress only through the `srt` proxy to the allow-list (model provider, docs hosts) |
+| Device, Guided preset | `srt` wraps each bash tool call | Writes only in the workspace (plus temp); egress only through the `srt` proxy to the allow-list (model provider, docs hosts) |
 | Device, Autonomous preset | Whole core child process launched under `srt` | Same, plus package registries on the allow-list, CPU, memory and wall-clock limits. If `srt` is unavailable the preset refuses to start (R-AUTO-4) |
 | Device, Manual preset | `srt` read-only profile | No writes until approved |
 | Reviewer | GitHub-hosted runner, fresh per job ([GitHub docs](https://docs.github.com/en/actions/concepts/runners/github-hosted-runners)) | The reviewer only reads code and calls a model; it never executes repo code in the MVP |
@@ -365,8 +373,12 @@ Environment variables (`.env.example` at repo root, values never committed): `DA
 | `extension.yml` | PR touching `apps/vscode` or `packages/core` | `@vscode/test-electron` integration tests on Linux (xvfb) and Windows |
 | `evals.yml` | PR touching prompts, retrieval, review or Pi version | seeded bug tasks (subset), retrieval golden set, planted-bug subset, injection cases. Needs a model key secret; skipped with a visible notice on fork PRs |
 | `db.yml` | PR touching `db/` | spin up `pgvector/pgvector` service container, apply migrations, run cross-tenant suite |
-| `web.yml` | PR touching `apps/web` | Playwright screenshots at 375, 768, 1440; axe checks; Impeccable detector |
+| `web.yml` | PR touching `apps/web` | Playwright screenshots at 375, 768, 1440; axe checks; Impeccable detector (`npx impeccable detect --github apps/web`) |
 | `release-*.yml` | tags | publish as in section 11 |
+
+TUI snapshot tests (Vitest, `apps/cli`): feed the TUI's ANSI output into `@xterm/headless` (the package exists on npm; version 6.0.0 as of 13 November 2026), then snapshot the rendered screen grid from `terminal.buffer.active` (each visible line via `IBufferLine.translateToString()`). These run in `ci.yml` with the other Vitest suites.
+
+Impeccable in CI (`web.yml`): the detector has a CLI ([pbakaus/impeccable](https://github.com/pbakaus/impeccable)). The command is `npx impeccable detect --github apps/web` (add `--json` when a machine-readable report is needed; point a second scan at a preview URL so rendered-page rules run). Exit code 0 means no primary findings, 1 means a target could not be scanned, 2 means primary findings. Exit 2 is a real finding and must not be suppressed.
 
 Cost control: path filters on every workflow, Linux runners by default, Windows only for extension tests, concurrency groups cancel superseded runs. All actions pinned by commit SHA.
 
@@ -379,7 +391,7 @@ Cost control: path filters on every workflow, Linux runners by default, Windows 
 
 ## 14. Terminal theme
 
-The TUI follows Claude Code's interaction model with Blame's own palette (PRD 9.2, PRD NG10). Pi themes are JSON color maps selected through the `theme` setting ([themes](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/themes.md)); Blame ships a `blame-dark` theme generated by `packages/theme` from `DESIGN.md` tokens so there is one source. Reference values from the palette: background Abyss `#04052E`, panels Deep Twilight `#140152`, elevated Navy `#22007C`, accent Lavender `#B9C2FF`, text `#F2F0FF` / `#A9A7CC` / `#6E6C94`, status success `#3ECF8E`, warning `#F5B544`, error `#FF6B6B`, info `#6EA8FF`. The full token set, ANSI 16 mapping and trust ramp live in `DESIGN.md` (Davinci, PR #2); do not copy them here. When the terminal reports no truecolor support, the theme falls back to the ANSI mapping.
+The TUI follows Claude Code's interaction model with Blame's own palette (PRD 9.2, PRD NG10). Pi themes are JSON color maps selected through the `theme` setting ([themes](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/themes.md)); Blame ships a `blame-dark` theme generated by `packages/theme` from `DESIGN.md` tokens so there is one source. Reference values from the palette: background Abyss `#04052E`, panels Deep Twilight `#140152`, elevated Navy `#22007C`, accent Lavender `#B9C2FF`, text `#F2F0FF` / `#A9A7CC` / `#8A88AA`, status success `#3ECF8E`, warning `#F5B544`, error `#FF6B6B`, info `#6EA8FF`. The trust ramp is `#8A88AA`, `#8B7CFF`, `#A29FFF`, `#B9C2FF`, `#FFFFFF`. `DESIGN.md` (Davinci, PR #2) is authoritative for the full token set, ANSI 16 mapping and trust ramp; do not treat copies here as the source. When the terminal reports no truecolor support, the theme falls back to the ANSI mapping.
 
 ## 15. Decisions and security
 
