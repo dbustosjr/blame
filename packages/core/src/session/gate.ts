@@ -22,9 +22,13 @@ export interface ApprovalRequest extends ToolCallInfo {
 /** Asks a human. Resolves true to run the call. A rejection counts as "no" (fail closed). */
 export type Approver = (request: ApprovalRequest) => Promise<boolean>;
 
-/** One gate decision that needs a record (FR-CORE-3: asked and blocked calls). */
+/**
+ * One gate decision that needs a record (FR-CORE-3: asked and blocked calls), or an
+ * `execution_violation`: a tool execution with no matching allow decision, which the execution
+ * guard refused (guard.ts).
+ */
 export interface AuditEvent {
-  readonly type: "tool_decision";
+  readonly type: "tool_decision" | "execution_violation";
   /** ISO time of the decision. */
   readonly at: string;
   readonly toolName: string;
