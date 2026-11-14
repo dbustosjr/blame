@@ -1,0 +1,56 @@
+{
+  "levels": [
+    { "id": "probation", "rank": 1, "name": "Probation", "capabilities": ["read", "run_tests"] },
+    {
+      "id": "drafter",
+      "rank": 2,
+      "name": "Drafter",
+      "capabilities": ["edit_workspace", "open_draft_pr"]
+    },
+    {
+      "id": "contributor",
+      "rank": 3,
+      "name": "Contributor",
+      "capabilities": ["run_allowlisted", "open_pr"]
+    },
+    {
+      "id": "maintainer",
+      "rank": 4,
+      "name": "Maintainer",
+      "capabilities": ["edit_ci", "edit_deps", "network_sandbox"]
+    },
+    { "id": "shipper", "rank": 5, "name": "Shipper", "capabilities": ["deploy_preview"] }
+  ],
+  "presets": [
+    {
+      "id": "manual",
+      "label": "Manual",
+      "ceiling": "drafter",
+      "autoAllow": ["read"],
+      "alwaysAskRisky": true,
+      "requiresOptIn": false,
+      "requiresSandbox": false
+    },
+    {
+      "id": "guided",
+      "label": "Guided",
+      "ceiling": "contributor",
+      "autoAllow": "granted",
+      "alwaysAskRisky": true,
+      "requiresOptIn": false,
+      "requiresSandbox": false,
+      "isDefault": true
+    },
+    {
+      "id": "autonomous",
+      "label": "Autonomous",
+      "ceiling": "maintainer",
+      "autoAllow": "granted",
+      "alwaysAskRisky": true,
+      "requiresOptIn": true,
+      "requiresSandbox": true
+    }
+  ],
+  "safeZones": ["payments/**", "auth/**", "migrations/**"],
+  "riskyAllowedFromLevel": "maintainer"
+}

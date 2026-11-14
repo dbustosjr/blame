@@ -1,0 +1,107 @@
+@import "tailwindcss";
+
+/*
+ * Colors come from @blame-ai/design-tokens as --blame-* variables set on <html> (lib/tokens.ts).
+ * Do not add color values here. Map tokens instead.
+ */
+
+:root {
+  /* shadcn/ui variables, mapped to DESIGN.md tokens */
+  --background: var(--blame-bg-base);
+  --foreground: var(--blame-text-primary);
+  --card: var(--blame-bg-panel);
+  --card-foreground: var(--blame-text-primary);
+  --popover: var(--blame-bg-panel);
+  --popover-foreground: var(--blame-text-primary);
+  --primary: var(--blame-accent);
+  --primary-foreground: var(--blame-bg-base);
+  --secondary: var(--blame-bg-raised);
+  --secondary-foreground: var(--blame-text-primary);
+  --muted: var(--blame-bg-panel);
+  --muted-foreground: var(--blame-text-muted);
+  --accent: var(--blame-bg-raised);
+  --accent-foreground: var(--blame-text-heading);
+  --destructive: var(--blame-status-error);
+  --border: var(--blame-border-strong);
+  --input: var(--blame-border-control);
+  --ring: var(--blame-accent);
+  --radius: var(--blame-radius-card);
+}
+
+@theme inline {
+  --font-sans: var(--font-inter), system-ui, sans-serif;
+  --font-mono: var(--blame-font-mono);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-bg-base: var(--blame-bg-base);
+  --color-bg-panel: var(--blame-bg-panel);
+  --color-bg-raised: var(--blame-bg-raised);
+  --color-brand: var(--blame-accent);
+  --color-heading: var(--blame-text-heading);
+  --color-primary-text: var(--blame-text-primary);
+  --color-secondary-text: var(--blame-text-secondary);
+  --color-muted-text: var(--blame-text-muted);
+  --color-border-subtle: var(--blame-border-subtle);
+  --color-border-strong: var(--blame-border-strong);
+  --color-border-control: var(--blame-border-control);
+  --color-trust-l0: var(--blame-trust-L0);
+  --color-trust-l1: var(--blame-trust-L1);
+  --color-trust-l2: var(--blame-trust-L2);
+  --color-trust-l3: var(--blame-trust-L3);
+  --color-trust-l4: var(--blame-trust-L4);
+
+  --radius-control: var(--blame-radius-control);
+  --radius-card: var(--blame-radius-card);
+  --radius-panel: var(--blame-radius-panel);
+}
+
+@layer base {
+  html {
+    background-color: var(--background);
+    color: var(--foreground);
+  }
+
+  body {
+    line-height: 1.6;
+  }
+
+  h1,
+  h2,
+  h3 {
+    color: var(--blame-text-heading);
+    line-height: 1.15;
+    font-weight: 600;
+  }
+
+  :focus-visible {
+    outline: var(--blame-focus-ring-width) solid var(--blame-accent);
+    outline-offset: var(--blame-focus-ring-offset);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      /* biome-ignore lint/complexity/noImportantStyles: reduced motion must override every component */
+      transition-duration: 0.01ms !important;
+      /* biome-ignore lint/complexity/noImportantStyles: reduced motion must override every component */
+      animation-duration: 0.01ms !important;
+    }
+  }
+}

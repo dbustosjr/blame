@@ -5,10 +5,15 @@ build/
 .next/
 coverage/
 *.vsix
+*.tsbuildinfo
+.vscode-test/
 .env
 .env.*
 !.env.example
+.blame/
+.impeccable/config.local.json
 .DS_Store
 *.log
 __pycache__/
 .venv/
+next-env.d.ts

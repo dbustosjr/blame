@@ -1,0 +1,32 @@
+{
+  "name": "blame-ai",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Blame terminal app. Installs the `blame` command.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "bin": {
+    "blame": "./dist/bin.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@blame-ai/core": "workspace:*",
+    "@blame-ai/design-tokens": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.2",
+    "@xterm/headless": "6.0.0",
+    "typescript": "6.0.3",
+    "vitest": "5.1.0"
+  }
+}

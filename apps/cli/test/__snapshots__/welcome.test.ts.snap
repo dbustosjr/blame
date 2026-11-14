@@ -1,0 +1,27 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`welcome box (DESIGN.md terminal app) > falls back to ASCII glyphs and plain text 1`] = `
+"+------------------------------------------------------------------------------+
+| |> Blame v0.0.0                                                              |
+|                                                                              |
+| cwd: /home/dev/projects/blame                                                |
+| mode: Guided (L2)                                                            |
+|                                                                              |
+| Tips: shift+tab cycles Manual, Guided and Autonomous                         |
+|       /mode switches presets, ? shows shortcuts                              |
++------------------------------------------------------------------------------+
+"
+`;
+
+exports[`welcome box (DESIGN.md terminal app) > renders the screen grid at 80 columns 1`] = `
+"╭──────────────────────────────────────────────────────────────────────────────╮
+│ ▏› Blame v0.0.0                                                              │
+│                                                                              │
+│ cwd: /home/dev/projects/blame                                                │
+│ mode: Guided (L2)                                                            │
+│                                                                              │
+│ Tips: shift+tab cycles Manual, Guided and Autonomous                         │
+│       /mode switches presets, ? shows shortcuts                              │
+╰──────────────────────────────────────────────────────────────────────────────╯
+"
+`;

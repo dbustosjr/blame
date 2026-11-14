@@ -1,0 +1,49 @@
+{
+  "levels": [
+    { "id": "watch", "rank": 10, "name": "Watch", "capabilities": ["read", "run_tests"] },
+    {
+      "id": "build",
+      "rank": 20,
+      "name": "Build",
+      "capabilities": ["edit_workspace", "open_draft_pr", "run_allowlisted", "open_pr"]
+    },
+    {
+      "id": "ship",
+      "rank": 30,
+      "name": "Ship",
+      "capabilities": ["edit_ci", "edit_deps", "network_sandbox", "deploy_preview"]
+    }
+  ],
+  "presets": [
+    {
+      "id": "manual",
+      "label": "Manual",
+      "ceiling": "watch",
+      "autoAllow": ["read"],
+      "alwaysAskRisky": true,
+      "requiresOptIn": false,
+      "requiresSandbox": false
+    },
+    {
+      "id": "guided",
+      "label": "Guided",
+      "ceiling": "build",
+      "autoAllow": "granted",
+      "alwaysAskRisky": true,
+      "requiresOptIn": false,
+      "requiresSandbox": false,
+      "isDefault": true
+    },
+    {
+      "id": "autonomous",
+      "label": "Autonomous",
+      "ceiling": "ship",
+      "autoAllow": "granted",
+      "alwaysAskRisky": false,
+      "requiresOptIn": true,
+      "requiresSandbox": true
+    }
+  ],
+  "safeZones": ["payments/**", "auth/**", "migrations/**"],
+  "riskyAllowedFromLevel": "ship"
+}
