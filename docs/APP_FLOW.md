@@ -292,7 +292,7 @@ States: works at 375, 768 and 1440; keyboard reachable with visible focus; `pref
 
 Each screen above must define purpose, required content, primary action, secondary action, loading, empty and error states before it is built. Gaps found while writing this:
 
-- The CLI flag `--mode` (PRD) or `--preset` (TRD), is **Pending**.
+- The CLI flag `--mode` (PRD) or `--preset` (TRD) is **Pending**.
 - DESIGN.md's website page list does not yet include the data page, the BYOK explanation or the proof page that PRD F23.3 requires.
 - PRD F23.1 asks for per-hunk accept or reject; DESIGN.md says use VS Code's native diff editor. This doc assumes per-hunk actions on top of the native diff editor; Forge to confirm it is feasible.
 - Whether a safe-zone approval can ever be "for this session" is not specified; this doc assumes one approval per action.
