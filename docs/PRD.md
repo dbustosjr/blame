@@ -14,7 +14,7 @@
 | Status | Draft for David's review. Items marked **Proposal** need David's yes. |
 | Supersedes | PRD v0.1 (`/workspace/docx/prd-YrcKYP/prd-v0.1.md`) |
 | Audience | David (builder), the Blame agent team (Forge, Davinci, Cortex, Github Repo Analysis, Mr. Coordinator), coding agents working in the repo, and later YC and a16z speedrun reviewers |
-| Companion docs | `docs/TRD.md`, `docs/ARCHITECTURE.md` and `docs/adr/` (Forge), `docs/APP_FLOW.md`, `docs/IMPLEMENTATION_PLAN.md` (Atlas), `DESIGN.md`, `AGENTS.md`, `TESTING.md` (Davinci) |
+| Companion docs | `docs/TRD.md`, `docs/ARCHITECTURE.md` and `docs/adr/` (Forge), `docs/IMPLEMENTATION_PLAN.md` (Forge writes it, Atlas reviews it and keeps it in line with section 12), `DESIGN.md`, `docs/APP_FLOW.md`, `AGENTS.md`, `docs/TESTING.md` (Davinci) |
 
 ### 0.1 How to read this document
 
@@ -348,6 +348,7 @@ Acceptance:
 
 Acceptance:
 - [ ] In autonomous mode at L3, an edit to a safe-zone path pauses for approval. There is no setting that disables this.
+- [ ] One approval covers one action: one file write or one command, showing its diff or command line. A new action in a safe zone asks again, even later in the same session (Proposal, pending D8).
 
 #### F23. Works where you are
 
@@ -789,6 +790,7 @@ The chart is the core proof, so the rule must be strict, public and shown in the
 | D5 | **"Never repeated" rule** (13.2) | Approve as drafted or adjust the 14 days and 5 exposures |
 | D6 | **Continuity with the November 8 scope** (proof-of-done and decision inbox) | Atlas suggests reusing its evidence-backed proof ideas in F3 and F24 and retiring the rest; confirm |
 | D7 | **Retention defaults** (R-RET) | Approve 90 days for evidence and events, deletion windows as listed |
+| D8 | **Safe-zone approval scope** (F18) | Recommend one approval per action for MVP. A per-session approval (same path pattern, ends when the session closes, logged) can come later if design partners find per-action approvals too noisy |
 
 ### 17.2 Open questions (carried from v0.1, updated)
 
@@ -834,4 +836,4 @@ The chart is the core proof, so the rule must be strict, public and shown in the
 14. Added the brand palette, terminal ANSI palette and trust ramp; design ownership pointed to `DESIGN.md`.
 15. Competitor claims marked Unverified; Greptile's 82% vs 44% labeled as their own marketing claim.
 16. Systems design detail (schema, REST endpoints, MCP tool shapes, jobs) moved out of the PRD to `TRD.md` and `ARCHITECTURE.md`; v0.1 section 10 is their input.
-17. New open decisions D1 to D7 (name searchability, repo name, cut list, YC date, never-repeated rule, November 8 continuity, retention).
+17. New open decisions D1 to D8 (name searchability, repo name, cut list, YC date, never-repeated rule, November 8 continuity, retention, safe-zone approval scope).
