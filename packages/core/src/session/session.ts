@@ -21,6 +21,7 @@ import type { PolicyConfig, PolicyContext } from "../policy/types.js";
 import { type Approver, type AuditEvent, createAutonomyGate } from "./gate.js";
 import { createExecutionLedger, guardTool } from "./guard.js";
 import { type AnyToolDefinition, createSecretSafeSearchTools } from "./search.js";
+import { testOnlyExtraExtensionFactories } from "./test-hooks.js";
 
 /** Appended to Pi's system prompt in every Blame session. */
 export const BLAME_SYSTEM_PROMPT = [
@@ -249,6 +250,11 @@ export async function createBlameSession(options: BlameSessionOptions): Promise<
       { name: "blame-guarded-tools", factory: guardedToolsExtension },
       { name: "blame-autonomy-gate", factory: autonomyGate },
       { name: "blame-context-inject", factory: contextInject },
+      // Empty outside tests (test-hooks.ts).
+      ...testOnlyExtraExtensionFactories(options).map((factory, i) => ({
+        name: `blame-test-only-${i}`,
+        factory,
+      })),
     ],
     appendSystemPromptOverride: () => [
       BLAME_SYSTEM_PROMPT,
