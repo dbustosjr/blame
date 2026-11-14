@@ -17,3 +17,7 @@ coverage/
 __pycache__/
 .venv/
 next-env.d.ts
+
+# Impeccable (installed locally: npx impeccable install --providers=cursor --scope=project -y)
+.cursor/skills/impeccable/
+.cursor/agents/impeccable-*.md
