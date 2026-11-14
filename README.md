@@ -31,13 +31,14 @@ Both are built on [Pi](https://github.com/earendil-works/pi), an open-source age
 
 ```
 apps/
-  cli/          terminal app and its interface
-  vscode/       VS Code extension
-  web/          website with install instructions
+  cli/            terminal app and its interface
+  vscode/         VS Code extension
+  web/            website with install instructions
 packages/
-  core/         agent, lessons, and second brain shared by both apps
-brand/          logo files and core colors
-docs/           product and technical docs
+  core/           agent, lessons, and second brain shared by both apps
+  design-tokens/  colors and type shared by the terminal, extension, and website
+brand/            logo files and core colors
+docs/             product and technical docs
 ```
 
 The folders fill in as the build moves forward. Logo files and core colors are in [brand](brand/). The [docs](docs/) folder holds the product requirements, architecture, design system, and build plan, and [AGENTS.md](AGENTS.md) tells coding agents how to work in this repo.
