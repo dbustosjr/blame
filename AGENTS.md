@@ -26,6 +26,31 @@ Status (November 13, 2026): planning. The repo has docs, brand assets and one CI
 
 When docs disagree, the order is PRD, then TRD, then the rest. Flag the conflict in your PR instead of picking silently.
 
+## Skills for Cursor and other agents
+
+Project skills live in [.cursor/skills/](.cursor/skills/) and load automatically in Cursor for anyone who opens this repo:
+
+| Skill | Load it for |
+|---|---|
+| `blame-dev-process` | Every change: the test-first loop, verification, worktrees, PR flow |
+| `blame-pi-engine` | `packages/core` engine work, `createBlameSession()`, Blame's Pi extensions, the RPC child process, Pi upgrades |
+| `blame-vscode-extension` | Anything in `apps/vscode`: build, debug, E2E tests under xvfb, per-hunk accept and reject, packaging and publishing |
+| `blame-key-storage` | API keys, tokens, `CredentialStore`, SecretStorage, the CLI keychain, revoke |
+
+Some contributors also have general skills installed globally. If you have a skill with the name below, load it for that kind of work. If you don't, skip it and follow the doc in the last column instead; nothing here depends on having them.
+
+| Work | Global skills, if installed | Without them, follow |
+|---|---|---|
+| Every change | `test-driven-development`, `systematic-debugging`, `verification-before-completion` | `blame-dev-process`, [TESTING.md](docs/TESTING.md) |
+| Core and backend (`packages/core`, `apps/api`, the Action, webhooks) | `system-design-production-readiness`, `security-audit` | [ARCHITECTURE](docs/ARCHITECTURE.md), [THREAT_MODEL](docs/THREAT_MODEL.md) |
+| Website (`apps/web`) and any UI | `design-system-writer`, `shadcn` | [DESIGN.md](docs/DESIGN.md) |
+| Changing or adding an ADR | `architecture-defense` | [docs/adr/](docs/adr/) |
+| Agent behavior, retrieval, the brain and `evals/` | `rag-agents-evals` | [REVIEWER_AND_BRAIN](docs/REVIEWER_AND_BRAIN.md) |
+| PRD and other specs | `prd-doc-coauthoring` | [PRD](docs/PRD.md) |
+| A specific doc | `trd-writer` (TRD), `architecture-doc-writer` (ARCHITECTURE), `implementation-plan-writer` (IMPLEMENTATION_PLAN), `testing-guide-writer` (TESTING), `app-flow-writer` (APP_FLOW), `agents-md-writer` (this file) | The doc itself and its "Read it when" row above |
+
+Skills are guidance. The docs in this repo and the guardrails below still win when they disagree.
+
 ## Repo layout
 
 Planned layout from PRD DEC-3 and ARCHITECTURE section 3. Folders appear as phases land.
@@ -43,6 +68,7 @@ functions/github-webhook/  InsForge edge function
 db/migrations/          plain SQL, applied from CI only
 evals/                  seeded bug tasks, retrieval golden set, planted-bug benchmark, injection cases
 docs/                   PRD, TRD, ARCHITECTURE, ADRs, plans
+.cursor/skills/         project skills for coding agents (see the skills section above)
 ```
 
 Hard rule (TRD TG-1): only `packages/core` imports Pi. CLI and extension hold no agent logic. CI will enforce this with an import-boundary check.
