@@ -92,7 +92,7 @@ Points that matter:
 
 | Blame piece | Pi hook | 1.5.2 behavior to rely on |
 |---|---|---|
-| autonomy gate | `pi.on("tool_call", ...)` | Return `{ block: true, reason }` to deny. `event.input` is mutable and is not re-validated after you change it. Unknown tools and invalid arguments skip `tool_call`, so also watch `tool_execution_end` for every finalized call |
+| autonomy gate | `pi.on("tool_call", ...)` | Return `{ block: true, reason }` to deny. `event.input` is mutable and is not re-validated after you change it. Unknown tools and invalid arguments skip `tool_call` (they do not run either). Every tool is a guarded copy that refuses a call without an allow decision; see THREAT_MODEL T-19 and section 3.1 |
 | ask decisions | `ctx.ui.confirm()` or `ctx.ui.select()` | In RPC mode these become `extension_ui_request` records. Give them a `timeout`; on timeout Pi resolves with the default (`false` or `undefined`), which must mean deny |
 | sandbox | `tool_call` on `bash` | Rewrite `event.input.command` to run through `srt` (ADR-0005) |
 | redaction | `tool_result` | Strip secrets before results reach model context or logs |

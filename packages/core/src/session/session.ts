@@ -4,6 +4,10 @@ import { type CredentialStore, InMemoryCredentialStore } from "@earendil-works/p
 import {
   type AgentSession,
   createAgentSession,
+  createBashToolDefinition,
+  createEditToolDefinition,
+  createReadToolDefinition,
+  createWriteToolDefinition,
   DefaultResourceLoader,
   type ExtensionFactory,
   ModelRuntime,
@@ -15,7 +19,8 @@ import { type KeyStore, keyStoreCredentials } from "../keys/keystore.js";
 import { defaultPolicy } from "../policy/seed.js";
 import type { PolicyConfig, PolicyContext } from "../policy/types.js";
 import { type Approver, type AuditEvent, createAutonomyGate } from "./gate.js";
-import { secretSafeSearchExtension } from "./search.js";
+import { createExecutionLedger, guardTool } from "./guard.js";
+import { type AnyToolDefinition, createSecretSafeSearchTools } from "./search.js";
 
 /** Appended to Pi's system prompt in every Blame session. */
 export const BLAME_SYSTEM_PROMPT = [
@@ -143,6 +148,54 @@ export async function createBlameSession(options: BlameSessionOptions): Promise<
     },
   });
 
+  const recordViolation = (violation: { toolName: string; toolCallId: string; reason: string }) => {
+    const event: AuditEvent = {
+      type: "execution_violation",
+      at: new Date().toISOString(),
+      toolName: violation.toolName,
+      toolCallId: violation.toolCallId,
+      capability: `tool:${violation.toolName}`,
+      paths: [],
+      decision: "block",
+      reason: violation.reason,
+      effectiveLevelId: "none",
+    };
+    auditLog.push(event);
+    options.onAudit?.(event);
+  };
+  // Defense in depth behind the tool_call hook: every tool's execute checks for this call's allow.
+  const ledger = createExecutionLedger(recordViolation);
+
+  const toolNames = [...(options.tools ?? BLAME_TOOLS)];
+  const settingsManager = SettingsManager.inMemory();
+  // Same options Pi's AgentSession passes its own built-ins (agent-session.js `_buildRuntime`).
+  const shellPath = settingsManager.getShellPath();
+  const commandPrefix = settingsManager.getShellCommandPrefix();
+  const builtins: Record<string, () => AnyToolDefinition> = {
+    read: () =>
+      createReadToolDefinition(options.cwd, {
+        autoResizeImages: settingsManager.getImageAutoResize(),
+      }),
+    bash: () =>
+      createBashToolDefinition(options.cwd, {
+        ...(shellPath === undefined ? {} : { shellPath }),
+        ...(commandPrefix === undefined ? {} : { commandPrefix }),
+      }),
+    edit: () => createEditToolDefinition(options.cwd),
+    write: () => createWriteToolDefinition(options.cwd),
+  };
+  const searchTools = new Map(createSecretSafeSearchTools(options.cwd).map((t) => [t.name, t]));
+  const guardedTools = toolNames.map((name) => {
+    const definition = Object.hasOwn(builtins, name) ? builtins[name]?.() : searchTools.get(name);
+    if (definition === undefined) {
+      throw new Error(`Blame cannot guard tool "${name}", so it will not turn it on`);
+    }
+    return guardTool(definition, ledger);
+  });
+  const guardedToolsExtension: ExtensionFactory = (pi) => {
+    for (const tool of guardedTools) pi.registerTool(tool);
+  };
+
   const autonomyGate: ExtensionFactory = (pi) => {
     pi.on("tool_call", async (event, ctx) => {
       const fallback: Approver | undefined = ctx.hasUI
@@ -153,10 +206,18 @@ export async function createBlameSession(options: BlameSessionOptions): Promise<
               { timeout: APPROVAL_TIMEOUT_MS },
             )
         : undefined;
-      return gate(
-        { toolName: event.toolName, toolCallId: event.toolCallId, input: event.input },
-        fallback,
-      );
+      let decision: Awaited<ReturnType<typeof gate>>;
+      try {
+        decision = await gate(
+          { toolName: event.toolName, toolCallId: event.toolCallId, input: event.input },
+          fallback,
+        );
+      } catch (error) {
+        decision = { block: true, reason: `Gate error: ${String(error)}` };
+      }
+      if (decision === undefined) ledger.allow(event.toolCallId, event.toolName, event.input);
+      else ledger.blocked(event.toolCallId);
+      return decision;
     });
   };
 
@@ -176,7 +237,6 @@ export async function createBlameSession(options: BlameSessionOptions): Promise<
     });
   };
 
-  const settingsManager = SettingsManager.inMemory();
   const resourceLoader = new DefaultResourceLoader({
     cwd: options.cwd,
     agentDir,
@@ -186,7 +246,7 @@ export async function createBlameSession(options: BlameSessionOptions): Promise<
     noPromptTemplates: true,
     noThemes: true,
     extensionFactories: [
-      { name: "blame-secret-safe-search", factory: secretSafeSearchExtension(options.cwd) },
+      { name: "blame-guarded-tools", factory: guardedToolsExtension },
       { name: "blame-autonomy-gate", factory: autonomyGate },
       { name: "blame-context-inject", factory: contextInject },
     ],
@@ -205,7 +265,21 @@ export async function createBlameSession(options: BlameSessionOptions): Promise<
     resourceLoader,
     settingsManager,
     sessionManager: SessionManager.inMemory(options.cwd),
-    tools: [...(options.tools ?? BLAME_TOOLS)],
+    tools: toolNames,
+  });
+
+  // If a Blame extension failed to load, the gate or the guarded tools may be missing, and Pi
+  // runs tools without a tool_call hook at all. Fail closed.
+  if (extensionsResult.errors.length > 0) {
+    session.dispose();
+    throw new Error(
+      `Blame extensions failed to load: ${extensionsResult.errors.map((e) => e.error).join("; ")}`,
+    );
+  }
+  session.subscribe((event) => {
+    if (event.type === "tool_execution_end") {
+      ledger.executionEnded(event.toolCallId, event.toolName, event.isError);
+    }
   });
 
   return {

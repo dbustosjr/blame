@@ -71,6 +71,27 @@ Risk = likelihood x impact on a High, Medium, Low scale (OWASP Risk Rating, simp
 | T-16 | I | **Over-collection**: evidence stores full source files or secrets | API | Medium | Excerpts only (about 200 lines, R-RET-3), redaction before upload, 90-day retention (pending D7), repo disconnect purge within 24 h, account deletion within 30 days | Retention job tests |
 | T-17 | S | **Malicious workspace extensions or MCP config** loaded by Pi (`.pi/` or `.blame/` in a cloned repo) | Core | Medium | Keep Pi's project-trust prompt on for Blame's config dir; never auto-trust ([Pi security doc](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/security.md)) | Test: untrusted repo with an extension does not load it |
 | T-18 | I | **Webview XSS** in the extension renders model or repo markdown | Extension | Medium | Strict CSP with nonces, no inline scripts, markdown sanitized, `localResourceRoots` limited | Extension test with hostile markdown |
+| T-19 | E | **Tool runs without the autonomy gate**: a Pi code path executes a tool without calling Blame's `tool_call` hook, or a hook failure lets it run | Core | High | `tool_call` hook is the gate; every tool Blame turns on is a guarded copy whose `execute` refuses a call with no matching one-shot allow decision (same id, tool and input) and records an `execution_violation`; `tool_execution_end` without a gate decision is recorded too; session creation fails if a Blame extension fails to load. Audit in section 3.1 | `packages/core/test/execution-guard.test.ts` (T-19) |
+
+### 3.1 Gate coverage audit (Pi 1.5.2, 2026-11-14)
+
+Read from the installed `pi-agent-core` `agent-loop.js`, `pi-coding-agent` `core/agent-session.js` and `core/extensions/runner.js`. Pi calls the session's `beforeToolCall`, which runs every extension's `tool_call` handler, in `prepareToolCall`, before `execute`. Rows marked (tested) have a test in `execution-guard.test.ts`; the others are from reading the source.
+
+| Path | What Pi 1.5.2 does | Bypass? |
+|---|---|---|
+| Sequential and parallel tool calls (tested, parallel) | Each call is prepared (hook awaited) before any execute; parallel mode prepares all calls first, then runs the prepared ones | No |
+| Hook throws or rejects (tested, gate error) | `_beforeToolCall` rethrows; `prepareToolCall` catches and returns an error result, so the tool does not run. Blame's gate also catches its own errors and blocks | No (fails closed) |
+| Hook slow or approval pending | The loop awaits the hook; Blame's approval has a timeout that resolves to deny | No |
+| Unknown tool, invalid arguments, truncated (max tokens) message | Error result without the hook and without execute; `tool_execution_start` and `tool_execution_end` are still emitted, which is why `tool_execution_end` alone is not proof of a run | No |
+| Nested calls (`ctx.executeTool` from a tool) | `runToolCall` with the same `beforeToolCall` (with `parentToolCallId`) | No |
+| Steer, follow-up, auto-retry, compaction | Same agent loop; retry re-requests the model and never re-runs earlier calls; compaction runs no tools | No |
+| Session resume | Tool calls in history are not re-executed | No |
+| **No `tool_call` handler registered** | `_beforeToolCall` returns undefined when `hasHandlers("tool_call")` is false, so every tool runs ungated. Happens if Blame's gate extension fails to load | **Yes, conditional.** `createBlameSession` now throws when any Blame extension reports a load error, and the guarded tools still refuse calls with no allow decision |
+| `event.input` mutated after the gate decided (tested, guard unit) | Pi passes the same object to `execute` and does not re-validate | Possible only through another in-process extension (Blame loads none). The guard compares the input to the snapshot taken at the decision and blocks a mismatch |
+| User shell (`AgentSession.executeBash`, RPC `bash`, `!` commands) | Runs a command directly, never through `tool_call` (only the `user_bash` event) | **Yes, by design.** It is a user action, not an agent tool call. Blame's engine protocol (ADR-0006) has no such method, and hosts must never pass webview or model text to it |
+| Direct `tool.execute()` by in-process code (tested) | No hook | Blocked by the guard and recorded as `execution_violation` |
+
+The sandbox (ADR-0005), not the gate, is the boundary for whatever a permitted `bash` command does afterwards, including background processes.
 
 ## 4. Privacy notes (LINDDUN-lite)
 
