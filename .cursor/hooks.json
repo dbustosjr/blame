@@ -3,7 +3,7 @@
   "hooks": {
     "postToolUse": [
       {
-        "command": "[ ! -f \".cursor/skills/impeccable/scripts/impeccable\" ] || \".cursor/skills/impeccable/scripts/impeccable\" hook",
+        "command": "node .cursor/hooks/impeccable-hook.mjs",
         "matcher": "^Write$",
         "timeout": 5
       }
