@@ -9,6 +9,12 @@ import type {
   TrustLevel,
 } from "./types.js";
 
+/**
+ * Risky-action classes that always ask, whatever the preset, level or `alwaysAskRisky` say. A
+ * floor in code, not data, so no seed or org config can lift it (follow-up to #22 and #23).
+ */
+export const ALWAYS_ASK_RISKY_CLASSES: readonly string[] = ["secret_access"];
+
 export class PolicyConfigError extends Error {
   override name = "PolicyConfigError";
 }
@@ -92,8 +98,9 @@ function knownCapabilities(config: PolicyConfig): Set<Capability> {
 /**
  * Decide allow, ask or block for one action (TRD 4.4, FR-CORE-3).
  *
- * Order: preset start checks, effective level, risky classes, then safe zones last so nothing can
- * turn a safe-zone "ask" back into "allow". Budget and credential scope checks land in Phase 2.
+ * Order: preset start checks, effective level, risky classes, the always-ask risky floor, then safe
+ * zones last so nothing can turn a safe-zone or always-ask "ask" back into "allow". Budget and
+ * credential scope checks land in Phase 2.
  */
 export function evaluate(
   config: PolicyConfig,
@@ -129,6 +136,14 @@ export function evaluate(
     if (preset.alwaysAskRisky || level.rank < threshold.rank) {
       decision = result("ask", `Risky action ${action.riskyClass} needs approval`);
     }
+  }
+
+  if (
+    action.riskyClass !== undefined &&
+    ALWAYS_ASK_RISKY_CLASSES.includes(action.riskyClass) &&
+    decision.decision === "allow"
+  ) {
+    decision = result("ask", `Risky action ${action.riskyClass} always needs approval`);
   }
 
   const zoneHit = (action.paths ?? []).find((path) =>
