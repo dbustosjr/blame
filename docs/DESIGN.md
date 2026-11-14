@@ -1,12 +1,12 @@
 # Blame design system
 
-This is the single source of truth for how Blame looks and behaves on all three surfaces: the website, the VS Code extension, and the terminal app. Colors come from `docs/BRAND.md`. This file adds the rules for using them, the type and spacing system, components, and the accessibility fixes the palette needs.
+This is the single source of truth for how Blame looks and behaves on all three surfaces: the website, the VS Code extension, and the terminal app. The five core colors come from `brand/README.md`; every other color is defined here. This file adds the rules for using them, the type and spacing system, components, and the accessibility fixes the palette needs.
 
 Status: draft v0.2 by Davinci, 2026-11-13. Logo files live in `brand/`.
 
 ## Sources and attribution
 
-- Palette: David's brand palette (docs/BRAND.md).
+- Palette: David's brand palette (core colors in `brand/README.md`).
 - Structural references from [VoltAgent/awesome-design-md](https://github.com/VoltAgent/awesome-design-md) (MIT), pinned at commit `fcc70284932276d085f01ef9f83edde90b1258cb`:
   - `design-md/linear.app/DESIGN.md` for the website's restraint, dense type hierarchy, and single accent color.
   - `design-md/warp/DESIGN.md` for block-based command output and terminal-first marketing sections.
@@ -34,7 +34,7 @@ Files in `brand/`: `logo-full-dark.png` (icon and wordmark on the brand gradient
 
 ## Color tokens
 
-Names here are what code uses. Values are from BRAND.md except where an accessibility fix is noted.
+Names here are what code uses. Values are from David's original brand palette except where an accessibility fix is noted.
 
 | Token | Value | Use |
 |---|---|---|
@@ -65,7 +65,7 @@ Trust ramp (revised so it brightens in order and never reuses a status color):
 | `trust.L3` | #B9C2FF | 11.46 / 8.99 |
 | `trust.L4` | #FFFFFF | 19.69 / 15.45 |
 
-Changes from BRAND.md: the original ramp used #6EA8FF for L1, which is also `status.info`, and put L3 (#8B7CFF) darker than L2 (#B9C2FF), so it did not actually brighten. L1 now takes the violet, L2 is a new midpoint between violet and lavender, and L3 takes the lavender. Always pair a trust color with its label (for example "L2"), never color alone.
+Changes from the original palette: the first ramp used #6EA8FF for L1, which is also `status.info`, and put L3 (#8B7CFF) darker than L2 (#B9C2FF), so it did not actually brighten. L1 now takes the violet, L2 is a new midpoint between violet and lavender, and L3 takes the lavender. Always pair a trust color with its label (for example "L2"), never color alone.
 
 Autonomy presets (Manual, Guided, Autonomous, per PRD DEC-4) are shown by name with the color of the highest trust level they allow at the current level.
 
@@ -119,7 +119,7 @@ Rules: max content width 1200px, 12-column grid, generous section spacing (96 to
 - Support `vscode-high-contrast` and `vscode-high-contrast-light` theme kinds; test both.
 - Use `@vscode/codicons` for icons. No custom icon font.
 - Views: Chat (webview), Review findings (tree view with file and line, one-click "Send to agent"), Brain (what Blame knows about this repo), Status bar item showing autonomy mode and trust level, click to change.
-- Diffs use VS Code's native diff editor, never a custom one. PRD F23.1 also needs accept or reject per hunk; Forge to confirm the mechanism (for example inline CodeLens or the chat edit API) works alongside the native diff before this is final.
+- Diffs use VS Code's native diff editor, never a custom one. PRD F23.1 also needs accept or reject per hunk. VS Code's stable API cannot accept single hunks inside the native diff editor, so the native diff is for viewing and Blame adds its own Accept and Reject controls on each hunk, applied with a workspace edit. This keeps the extension publishable on both marketplaces.
 - Every destructive or outside-the-workspace action shows a confirmation that names the exact file or command.
 
 ## Terminal app (modeled on Claude Code)
@@ -135,9 +135,53 @@ Layout, top to bottom:
 Behavior:
 - shift+tab cycles Manual, Guided and Autonomous, the same way Claude Code cycles its modes. Autonomous needs an explicit opt-in per workspace (PRD R-AUTO-1), and the cycle skips it until then.
 - Permission prompts are a bordered box with the exact command or file, and numbered choices (allow once, allow for this session, deny). Enter picks the highlighted one.
-- Colors: truecolor when `COLORTERM` is `truecolor` or `24bit`, nearest ANSI 256 otherwise, plain ANSI 16 (the BRAND.md mapping) as the final fallback. Honor `NO_COLOR`.
+- Colors: truecolor when `COLORTERM` is `truecolor` or `24bit`, nearest ANSI 256 otherwise, plain ANSI 16 (see "Terminal ANSI 16" below) as the final fallback. Honor `NO_COLOR`.
 - Must work in Windows Terminal, PowerShell, WSL, macOS Terminal, iTerm2 and the VS Code integrated terminal. Glyphs need ASCII fallbacks for consoles without Unicode.
 - Check Pi's own TUI package first before adding another TUI library.
+
+## Terminal ANSI 16
+
+In 16-color mode Blame cannot set exact colors. The user's terminal theme decides what "blue" or "white" looks like, and that theme may be light or dark. So the 16-color mapping is semantic and has to stay readable on both:
+
+- Never set a background color. Blame keeps the user's terminal background.
+- Body text and headings use the terminal's default foreground (no color code), with bold for headings. White and bright white disappear on light themes, so they are never used for text.
+- Muted and secondary text use bright black, or the default foreground with the dim attribute (SGR 2) where the terminal supports it.
+- Every color-coded item also has a label or glyph, so nothing depends on color alone.
+
+| Token | ANSI 16 |
+|---|---|
+| `bg.base`, `bg.panel`, `bg.raised` | none (keep the terminal background) |
+| `text.heading` | default foreground, bold |
+| `text.primary` | default foreground |
+| `text.secondary` | default foreground, dim |
+| `text.muted`, `text.disabled` | bright black |
+| `accent` | bright blue |
+| `border.subtle`, `border.strong` | bright black |
+| `border.control` | blue |
+| `status.success` | green |
+| `status.warning` | yellow |
+| `status.error` | red |
+| `status.info` | cyan |
+| trust L0 | bright black |
+| trust L1 | magenta |
+| trust L2 | bright magenta |
+| trust L3 | bright blue |
+| trust L4 | default foreground, bold |
+
+### Optional Blame terminal theme
+
+For users who want the full look in a terminal that only takes 16 colors, ship this as a color scheme for Windows Terminal, iTerm2 and VS Code's integrated terminal. It is David's original terminal palette, with bright black raised to #5B5986 so text in it stays readable (see the accessibility fixes above). Background #04052E, foreground #E8E6FF, cursor #B9C2FF, selection #22007C.
+
+| Color | Normal | Bright |
+|---|---|---|
+| Black | #04052E | #5B5986 |
+| Red | #FF6B6B | #FF8A8A |
+| Green | #3ECF8E | #6FE3AE |
+| Yellow | #F5B544 | #FFC95E |
+| Blue | #6EA8FF | #8FBFFF |
+| Magenta | #B18CFF | #CDB4FF |
+| Cyan | #6ED3D3 | #8FE3E3 |
+| White | #E8E6FF | #FFFFFF |
 
 ## Component states checklist
 
