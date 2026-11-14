@@ -35,6 +35,7 @@ export default function DataPage() {
   return (
     <DocPage
       title="Your data"
+      status="Not released yet"
       lead={
         <p>
           What leaves your machine, where it goes, and how long it stays. Blame is local first: with

@@ -7,6 +7,7 @@ export default function ClaudeSubscriptionsPage() {
   return (
     <DocPage
       title="Why Claude subscriptions cannot be used"
+      status="Not released yet"
       lead={
         <p>
           If you pay for Claude Pro or Max, you might expect to sign in with it. Blame can't offer

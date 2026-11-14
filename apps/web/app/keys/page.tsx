@@ -7,6 +7,7 @@ export default function KeysPage() {
   return (
     <DocPage
       title="How keys work"
+      status="Not released yet"
       lead={
         <p>
           Blame runs on a model you already pay for. Bring your own API key, or, if you have a
