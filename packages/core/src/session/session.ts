@@ -26,6 +26,9 @@ export const BLAME_SYSTEM_PROMPT = [
 /** Custom message type for injected context (lessons, knowledge items). */
 export const BLAME_CONTEXT_MESSAGE_TYPE = "blame-context";
 
+/** Pi's UI approval dialogs dismiss after this long, and a dismissed dialog means deny. */
+export const APPROVAL_TIMEOUT_MS = 5 * 60 * 1000;
+
 /** Pi's built-in tools Blame turns on. The gate classifies each of them. */
 export const BLAME_TOOLS = ["read", "bash", "edit", "write"] as const;
 
@@ -130,6 +133,7 @@ export async function createBlameSession(options: BlameSessionOptions): Promise<
             ctx.ui.confirm(
               "Blame needs your approval",
               `${request.toolName}: ${request.result.reason}`,
+              { timeout: APPROVAL_TIMEOUT_MS },
             )
         : undefined;
       return gate(

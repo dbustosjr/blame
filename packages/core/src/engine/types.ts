@@ -46,8 +46,8 @@ export interface EngineAdapter {
 }
 
 /**
- * Pi packages Blame will pin exactly in Phase 1 (TRD C-9). Checked with `npm view` on
- * 2026-11-13. Recorded here as data only; nothing imports Pi in Phase 0.
+ * Pi packages Blame pins exactly (TRD C-9). Checked with `npm view` on 2026-11-13. The first three
+ * are dependencies of packages/core since Phase 1; pi-tui joins when the CLI theme lands (Phase 3).
  */
 export const PI_PACKAGES = {
   "@earendil-works/pi-coding-agent": "1.5.2",
