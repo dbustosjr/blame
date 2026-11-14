@@ -153,6 +153,9 @@ These are settled. Changing one needs a new decision from David and a change log
 | DEC-5 | **Second brain follows Cortex's design** | Linked knowledge items, evidence and a Draft, Confirmed, Superseded lifecycle, dedupe before save, staleness flags, auto-injection before each task, hybrid search, markdown export, retrieval evals |
 | DEC-6 | **Independent AI review (F24) is in scope** | A separate reviewer on every agent PR, including PRs from Cursor and Claude Code |
 | DEC-7 | **Name is Blame, with the palette in section 9** | Website UI follows `DESIGN.md` (Davinci, built with Impeccable and awesome-design-md). Terminal and extension use the same tokens |
+| DEC-8 | **Blame is open source** (David, 2026-11-13) | The client (`packages/core`, `apps/cli`, `apps/vscode`) is open source, which lets ChatGPT sign-in work at launch. License is a Proposal: Apache-2.0 (permissive like Pi's MIT, plus a patent grant), pending David's yes. The repo stays private until David chooses to make it public |
+| DEC-9 | **Name: company is Blame, "Blame AI" where needed** (David, 2026-11-13) | "Blame" is the brand and company name. "Blame AI" is used wherever plain Blame would collide, such as marketplace titles, handles, domains and package scopes. Nothing is registered or bought without David's yes |
+| DEC-10 | **Reviewer as a GitHub Action and local sandbox** (David delegated, 2026-11-13) | ADR-0004 and ADR-0005 stand as written: the reviewer runs in the user's repo with the user's key, and the sandbox runs locally |
 
 ### 6.1 How Blame works with other agents
 
@@ -693,7 +696,7 @@ Weeks start after Week 0. Each milestone ends with a verification check that can
 | Weeks | Milestone | Main work | Exit check |
 |---|---|---|---|
 | 1 | Setup and Pi spike | Repo scaffold and CI, Pi spike with BYOK, partner track starts (target list and outreach drafts, David approves every message) | Pi runs a tool-calling task from `packages/core` in CI; outreach drafts are ready for David |
-| 2 to 3 | Core and CLI | `packages/core` on Pi: guardrails (F15), reproduce-before-fix (F8), SDLC loop (F9), docs-first (F11), local brain; CLI TUI v0 with palette in week 3. ChatGPT sign-in only if the open-source decision is made, otherwise BYOK only | A seeded bug task in the CLI produces a failing reproduction, a fix and a PR on a test repo, with cost shown |
+| 2 to 3 | Core and CLI | `packages/core` on Pi: guardrails (F15), reproduce-before-fix (F8), SDLC loop (F9), docs-first (F11), local brain; CLI TUI v0 with palette in week 3. BYOK and ChatGPT sign-in (DEC-8) | A seeded bug task in the CLI produces a failing reproduction, a fix and a PR on a test repo, with cost shown |
 | 4 to 5 | Extension, autonomy and install pages | Static install, BYOK and data pages in week 4; `apps/vscode` chat panel, diffs, checkpoints (F10), presets and trust (F2, R-AUTO), safe zones (F18), local sandbox, secrets (F17), audit log (F4); first partner installs on the CLI | Same task in VS Code and Cursor in all three presets; sandbox escape tests pass; install page live |
 | 5 to 6 | Backend, learning record and brain (**FUR at end of week 6 if cut list approved**) | Backend and MCP server (stdio first), F3 lessons and regression tests, F6 brain (links, lifecycle, dedupe, staleness, injection, hybrid search, export) | A repeated mistake is prevented or caught and the chart shows it; retrieval eval meets G6; 2 design partners installed |
 | 7 to 8 | Independent review | Thin F24 first in week 7, then full F24: self-updating index, cross-file detection, benchmark at 25 or more bugs; GitHub App failure capture; thin proof page | Reviewer meets G5 on the benchmark; a Claude Code PR gets a review and a one-click fix |
@@ -783,8 +786,8 @@ The chart is the core proof, so the rule must be strict, public and shown in the
 
 | ID | Decision | Options and Atlas's suggestion |
 |---|---|---|
-| D1 | **Name searchability.** "Blame" collides with `git blame` in search, docs and editor commands (GitLens and others use "blame" for line history) | Keep "Blame" as the brand and use a consistent qualifier for discoverability, for example "Blame Agent" or "Blame AI" in marketplace titles, a domain such as `useblame`, `getblame` or a `blame.` prefix on a short TLD, npm scope `@blame-ai/cli` or similar, CLI command `blame` (check for conflicts). Atlas runs availability checks in W0-8; nothing is registered or purchased without David's yes |
-| D2 | **Repo name.** Currently private `dbustosjr/mercury` | Rename to `dbustosjr/blame` (or the D1 handle). GitHub redirects the old URL. Needs David's yes; Github Repo Analysis would do it |
+| D1 | **Name searchability.** Decided in DEC-9 | Atlas runs availability checks for "Blame AI" handles, domains and package scopes in W0-8, then brings the options to David |
+| D2 | **Repo name.** Done: `dbustosjr/blame` | None |
 | D3 | **Cut list approval** (section 12.3, C1 to C8) | Approve all, approve some, or keep the full 8 to 10 week MVP before any release |
 | D4 | **YC application date** | Needed to plan the 5-partner goal backward. If the date is under 8 weeks away, the cut list is required |
 | D5 | **"Never repeated" rule** (13.2) | Approve as drafted or adjust the 14 days and 5 exposures |
