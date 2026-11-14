@@ -43,6 +43,8 @@ Protocol v1 (`packages/core/src/rpc/protocol.ts`):
 * Client to engine: `request` with method `init` (cwd, model, key, policy context, tools, approval timeout), `prompt`, `abort`, `blame_state`, `shutdown`; and `approval_response`.
 * Engine to client: `response` (by request id), `event` (`text_delta`, `tool_start`, `tool_end`, `audit`, `settled`, `error`), `approval_request` (tool, capability, paths, risky class, reason, timeout) and `protocol_error`.
 * Validation is hand-written. Core has no schema library, and adding zod would be a new dependency (AGENTS.md asks David first). Error messages name fields, never values, and the engine redacts the init key from every error it sends.
+* The child gets a short env allowlist (PATH, home, locale, temp dirs, and the Windows system variables), never the host's full environment, plus an explicit `extraEnv`. Pi 1.5.2 falls back to provider keys in `process.env` (`defaultProviderAuthContext`), so the engine also deletes credential-looking variables before Pi starts and takes keys only from `init` (issue #38).
+* Every frame the engine writes passes the key filter, including streamed text (a stream redactor holds back a possible start of the key across deltas), approval requests, audit events and `blame_state`. The in-memory audit log is a ring of the most recent 1000 entries by default; `blame_state` also reports the total.
 * Fail closed on both sides: the engine denies on its own timeout (capped at `APPROVAL_TIMEOUT_MS`), on abort, on shutdown and on stdin EOF; the client denies on its timeout, a host callback error, or any answer other than `true`.
 
 ### Consequences

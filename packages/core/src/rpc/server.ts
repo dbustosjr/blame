@@ -21,6 +21,7 @@ import {
   parseClientMessage,
   type ResponseErrorCode,
 } from "./protocol.js";
+import { createStreamRedactor, redactDeep, type StreamRedactor } from "./redact.js";
 
 export interface EngineServerOptions {
   readonly input?: NodeJS.ReadableStream;
@@ -32,7 +33,12 @@ export interface EngineServerOptions {
   /** Tests: wrap or replace session creation. Default: createBlameSession. */
   readonly createSession?: (options: BlameSessionOptions) => Promise<BlameSession>;
   readonly maxLineLength?: number;
+  /** Audit entries kept in memory and returned by blame_state, newest last. Default 1000. */
+  readonly auditLogLimit?: number;
 }
+
+/** Default cap on the in-memory audit log (issue #38). */
+export const DEFAULT_AUDIT_LOG_LIMIT = 1000;
 
 export interface EngineServer {
   /** Resolves after shutdown has finished (before `exit` is called). */
@@ -83,7 +89,10 @@ export function runEngineServer(options: EngineServerOptions = {}): EngineServer
   let shuttingDown = false;
   let approvalSeq = 0;
   const approvals = new Map<string, PendingApproval>();
+  const auditLogLimit = Math.max(1, options.auditLogLimit ?? DEFAULT_AUDIT_LOG_LIMIT);
   const auditLog: AuditEvent[] = [];
+  let auditLogTotal = 0;
+  let textRedactor: StreamRedactor = createStreamRedactor([]);
   let unsubscribe: (() => void) | undefined;
 
   let resolveClosed: () => void = () => {};
@@ -94,12 +103,18 @@ export function runEngineServer(options: EngineServerOptions = {}): EngineServer
   const send = (message: EngineMessage) => {
     if (output.writable === false) return;
     try {
-      rawWrite(serializeJsonLine(message));
+      // Every frame passes the key filter: text, tool input in approvals and audit, state, errors.
+      rawWrite(serializeJsonLine(apiKey ? redactDeep(message, [apiKey]) : message));
     } catch {
       // A closed pipe means the client is gone; stdin end will shut us down.
     }
   };
   const event = (e: EngineStreamEvent) => send({ v: 1, type: "event", event: e });
+  /** Emits text held back by the stream redactor (a possible start of the key). */
+  const flushText = () => {
+    const text = textRedactor.flush();
+    if (text) event({ type: "text_delta", text });
+  };
   const ok = (id: string, result?: unknown) =>
     send(
       result === undefined
@@ -154,6 +169,7 @@ export function runEngineServer(options: EngineServerOptions = {}): EngineServer
     ...(model === undefined ? {} : { model }),
     ...(policyContext === undefined ? {} : { policyContext }),
     auditLog: [...auditLog],
+    auditLogTotal,
     pendingApprovals: approvals.size,
   });
 
@@ -177,8 +193,12 @@ export function runEngineServer(options: EngineServerOptions = {}): EngineServer
         approve,
         onAudit: (audit) => {
           auditLog.push(audit);
+          auditLogTotal++;
+          if (auditLog.length > auditLogLimit) auditLog.splice(0, auditLog.length - auditLogLimit);
+          flushText();
           event({ type: "audit", audit });
         },
+        auditLogLimit,
         modelRuntime,
       });
       if (shuttingDown) {
@@ -192,10 +212,15 @@ export function runEngineServer(options: EngineServerOptions = {}): EngineServer
         params.approvalTimeoutMs ?? APPROVAL_TIMEOUT_MS,
         APPROVAL_TIMEOUT_MS,
       );
+      textRedactor = createStreamRedactor(params.apiKey ? [params.apiKey] : []);
       unsubscribe = created.pi.subscribe((e) => {
         if (e.type === "message_update" && e.assistantMessageEvent.type === "text_delta") {
-          event({ type: "text_delta", text: e.assistantMessageEvent.delta });
+          const text = textRedactor.push(e.assistantMessageEvent.delta);
+          if (text) event({ type: "text_delta", text });
+        } else if (e.type === "message_end") {
+          flushText();
         } else if (e.type === "tool_execution_start") {
+          flushText();
           event({ type: "tool_start", toolCallId: e.toolCallId, toolName: e.toolName });
         } else if (e.type === "tool_execution_end") {
           event({
@@ -225,6 +250,7 @@ export function runEngineServer(options: EngineServerOptions = {}): EngineServer
       await current.prompt(text);
       if (running !== mine) return;
       running = undefined;
+      flushText();
       event({ type: "settled" });
       ok(id);
     } catch (error) {

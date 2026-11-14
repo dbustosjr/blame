@@ -98,13 +98,15 @@ export interface BlameSessionOptions {
   readonly modelRuntime?: ModelRuntime;
   /** Tool names to turn on. Default: BLAME_TOOLS. */
   readonly tools?: readonly string[];
+  /** Cap on `auditLog`; the oldest entries drop first. Default 1000. */
+  readonly auditLogLimit?: number;
 }
 
 export interface BlameSession {
   /** The underlying Pi session, for streaming events. Only packages/core sees this type. */
   readonly pi: AgentSession;
   readonly modelRuntime: ModelRuntime;
-  /** Asked and blocked tool calls for this session, oldest first. */
+  /** Asked and blocked tool calls for this session, oldest first, capped by `auditLogLimit`. */
   readonly auditLog: readonly AuditEvent[];
   /** Errors from loading Blame's inline extensions. Empty when healthy. */
   readonly extensionErrors: readonly { readonly path: string; readonly error: string }[];
@@ -132,6 +134,7 @@ export async function createBlameSession(options: BlameSessionOptions): Promise<
   const configDir = options.configDir ?? join(homedir(), ".blame");
   const agentDir = join(configDir, "agent");
   const auditLog: AuditEvent[] = [];
+  const auditLogLimit = Math.max(1, options.auditLogLimit ?? 1000);
   const gate = createAutonomyGate({
     policy: options.policy ?? defaultPolicy,
     cwd: options.cwd,
@@ -139,6 +142,7 @@ export async function createBlameSession(options: BlameSessionOptions): Promise<
     ...(options.approve ? { approve: options.approve } : {}),
     onAudit: (event) => {
       auditLog.push(event);
+      if (auditLog.length > auditLogLimit) auditLog.splice(0, auditLog.length - auditLogLimit);
       options.onAudit?.(event);
     },
   });

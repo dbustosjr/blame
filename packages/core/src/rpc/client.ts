@@ -13,7 +13,7 @@ import {
   parseEngineMessage,
   type RequestMethod,
 } from "./protocol.js";
-import { isSupportedNodeVersion, resolveEngineRuntime } from "./runtime.js";
+import { buildEngineEnv, isSupportedNodeVersion, resolveEngineRuntime } from "./runtime.js";
 
 export type ApprovalPrompt = Omit<
   Extract<EngineMessage, { type: "approval_request" }>,
@@ -45,8 +45,13 @@ export interface BlameEngineClientOptions {
   /** Extra arguments before the entry, for example Node flags. */
   readonly args?: readonly string[];
   readonly cwd?: string;
-  /** Child environment. Default: process.env. */
+  /**
+   * Host environment the child's allowlist is taken from (buildEngineEnv). Default: process.env.
+   * The child never gets the whole environment.
+   */
   readonly env?: NodeJS.ProcessEnv;
+  /** Extra variables for the child, passed as is. Not for keys: send those in `init`. */
+  readonly extraEnv?: Readonly<Record<string, string>>;
   /** Host side cap on one approval. Default APPROVAL_TIMEOUT_MS; the engine's own cap also applies. */
   readonly approvalTimeoutMs?: number;
   /** Timeout for requests other than prompt. Default 30 s. */
@@ -146,7 +151,9 @@ export class BlameEngineClient {
   /** Spawns the engine and waits for its `ready` frame. */
   async start(): Promise<{ protocol: number; engine: string }> {
     if (this.child) throw new EngineError("Engine already started", "already_started");
-    const env = this.options.env ?? process.env;
+    const env = buildEngineEnv(this.options.env ?? process.env, {
+      ...(this.options.extraEnv === undefined ? {} : { extraEnv: this.options.extraEnv }),
+    });
     const runtime = resolveEngineRuntime({
       ...(this.options.command === undefined ? {} : { command: this.options.command }),
       ...(this.options.fallbackNode === undefined

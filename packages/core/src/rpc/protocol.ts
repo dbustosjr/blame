@@ -70,7 +70,10 @@ export interface BlameState {
   readonly running: boolean;
   readonly model?: EngineModel;
   readonly policyContext?: PolicyContext;
+  /** The most recent audit entries, newest last, capped by the engine (default 1000). */
   readonly auditLog: readonly AuditEvent[];
+  /** All audit entries this session, including ones dropped by the cap. */
+  readonly auditLogTotal: number;
   readonly pendingApprovals: number;
 }
 

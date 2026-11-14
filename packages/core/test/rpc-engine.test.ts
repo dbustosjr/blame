@@ -56,16 +56,23 @@ afterEach(async () => {
 function start(
   steps: Step[],
   onApproval: (req: ApprovalPrompt, signal: AbortSignal) => Promise<boolean> | boolean,
-  extra: { mode?: string; approvalTimeoutMs?: number; entry?: string } = {},
+  extra: {
+    mode?: string;
+    approvalTimeoutMs?: number;
+    entry?: string;
+    hostEnv?: NodeJS.ProcessEnv;
+    extraEnv?: Record<string, string>;
+  } = {},
 ): BlameEngineClient {
   client = new BlameEngineClient({
     entry: extra.entry ?? fauxEngine,
     cwd: coreDir,
-    env: {
-      ...process.env,
+    ...(extra.hostEnv === undefined ? {} : { env: extra.hostEnv }),
+    extraEnv: {
       BLAME_FAUX_STEPS: JSON.stringify(steps),
       BLAME_FAUX_MODE: extra.mode ?? "",
       PI_OFFLINE: "1",
+      ...(extra.extraEnv ?? {}),
     },
     onApproval,
     ...(extra.approvalTimeoutMs === undefined
@@ -265,5 +272,40 @@ describe("BlameEngineClient with the stdio engine", () => {
       }),
     ).rejects.toThrow(/Unknown model/);
     expect((await c.state()).initialized).toBe(false);
+  });
+
+  it("passes only the env allowlist to the child; host keys never arrive (issue #38)", async () => {
+    const out = join(workDir, "env.json");
+    const fake = ["blame", "fake", "env", "value"].join("-");
+    const c = start([], () => false, {
+      hostEnv: {
+        ...process.env,
+        OPENAI_API_KEY: fake,
+        ANTHROPIC_API_KEY: fake,
+        GITHUB_TOKEN: fake,
+        NODE_OPTIONS: "--max-old-space-size=64",
+        BLAME_UNLISTED_VAR: "x",
+      },
+      extraEnv: { BLAME_FAUX_ENV_OUT: out, MY_SERVICE_TOKEN: fake },
+    });
+    await init(c);
+    const report = JSON.parse(readFileSync(out, "utf8")) as {
+      received: string[];
+      afterScrub: string[];
+    };
+    for (const name of [
+      "OPENAI_API_KEY",
+      "ANTHROPIC_API_KEY",
+      "GITHUB_TOKEN",
+      "NODE_OPTIONS",
+      "BLAME_UNLISTED_VAR",
+    ]) {
+      expect(report.received).not.toContain(name);
+    }
+    expect(report.received).toContain("BLAME_FAUX_ENV_OUT");
+    // A credential-looking name sent through extraEnv is still scrubbed by the engine.
+    expect(report.received).toContain("MY_SERVICE_TOKEN");
+    expect(report.afterScrub).not.toContain("MY_SERVICE_TOKEN");
+    if (process.env.PATH !== undefined) expect(report.received).toContain("PATH");
   });
 });
