@@ -83,7 +83,7 @@ Grouped by area. Each line is observable behavior and names the PRD feature it s
 Both concepts are data, not code constants:
 
 - `trust_levels` rows (seeded L0 to L4 from PRD F2) carry a capability set.
-- `autonomy_presets` rows (seeded Manual, Auto, Autonomous) carry a ceiling level and an approval policy.
+- `autonomy_presets` rows (seeded Manual, Guided, Autonomous) carry a ceiling level and an approval policy.
 - Earned trust is stored per agent, per repo, per task class (`agent_trust`).
 
 Effective permission for a tool call (R-AUTO-2): `min(preset.ceiling, earned level for this task class)`, then safe zones (always ask, no override, R-AUTO-3), then budget, then credential scope. Every check must pass.
@@ -91,10 +91,10 @@ Effective permission for a tool call (R-AUTO-2): `min(preset.ceiling, earned lev
 | Preset (seed) | Ceiling | Approval policy | Sandbox profile |
 |---|---|---|---|
 | Manual | L1 | Ask for every edit and command | Read-only; writes only after approval |
-| Auto (default) | L2 | Low-risk steps automatic (checkpoints, lessons, tests, allow-listed commands); ask for risky steps | Writes limited to workspace; egress only to model provider and docs hosts |
+| Guided (default) | L2 | Low-risk steps automatic (checkpoints, lessons, tests, allow-listed commands); ask for risky steps | Writes limited to workspace; egress only to model provider and docs hosts |
 | Autonomous (opt-in per workspace) | L3 (L4 Later) | Ask only for safe zones and risky-action classes | Full `srt` profile: workspace-only writes, egress allow-list, CPU, memory and time limits. Refuses to start without sandbox |
 
-Naming note: PRD v0.2 calls the middle preset "Guided"; David's room wording was "auto". This TRD uses "Auto" in seed data; the display label is one row change.
+Naming note: docs use "Guided" and `--mode guided` to match PRD v0.2. The final name of the middle preset is pending David (OQ-6).
 
 Capabilities used by the gate (from PRD F2): `read`, `run_tests`, `edit_workspace`, `open_draft_pr`, `run_allowlisted`, `open_pr`, `edit_ci`, `edit_deps`, `network_sandbox`, `deploy_preview`. Risky-action classes (always at least "ask" below L3): `migration`, `delete_outside_branch`, `secret_access`, `egress_outside_allowlist`, `ci_change`, `force_push`.
 
@@ -113,7 +113,7 @@ Capabilities used by the gate (from PRD F2): `read`, `run_tests`, `edit_workspac
 
 ### 4.6 Surfaces
 
-- FR-CLI-1: `blame` opens the interactive TUI; `blame run "task" --preset auto --json` runs non-interactively with JSONL events; `blame review`, `blame fix <id>`, `blame lessons`, `blame export`, `blame revoke`, `blame mcp` (stdio MCP server) exist (F23.2).
+- FR-CLI-1: `blame` opens the interactive TUI; `blame run "task" --mode guided --json` runs non-interactively with JSONL events (`--mode` is `manual`, `guided` or `autonomous`); `blame review`, `blame fix <id>`, `blame lessons`, `blame export`, `blame revoke`, `blame mcp` (stdio MCP server) exist (F23.2).
 - FR-CLI-2: `NO_COLOR` and non-TTY produce plain output (R-A11Y).
 - FR-EXT-1: Extension activation registers commands only (under 1 s, R-PERF-5). The core runs in a child process (ARCHITECTURE section 4) so a crash never takes down the extension host.
 - FR-EXT-2: Chat panel, per-hunk accept or reject, preset toggle in panel header and status bar, trust badge, proof view, checkpoint timeline, approval prompts, `vscode://` handler for "Fix with agent" (F23.1).
@@ -271,4 +271,4 @@ Two transports: `blame mcp` (stdio, recommended for Cursor and Claude Code; read
 | OQ-3 | Does David have GitHub Pro (for example through the Student Developer Pack)? | Branch protection on the private repo (C-3) |
 | OQ-4 | InsForge: scale to zero for custom compute, backup policy on Free | Always-on API and NFR-9 |
 | OQ-5 | Node version in Cursor's and Windsurf's extension hosts | VS Code 1.142 ships Node 24.21 ([vscode-versions](https://github.com/ewanharris/vscode-versions)); forks may lag. Core needs 22.19+ |
-| OQ-6 | Preset naming: "Auto" (David) or "Guided" (PRD) | Display label only |
+| OQ-6 | Final name of the middle preset (docs use Guided to match the PRD; David's earlier wording was Auto) | Seed label and CLI help text; pending David |

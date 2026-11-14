@@ -28,7 +28,7 @@ R-AUTO says the sandbox, not the prompt, enforces autonomy, and Autonomous must 
 
 ## Decision Outcome
 
-Proposed option: "A", because it is the only option covering all three operating systems natively: `sandbox-exec` on macOS, bubblewrap on Linux, and on Windows a dedicated `srt-sandbox` user with a Windows Filtering Platform egress filter and write-restricted token, with network access forced through local proxies ([srt README](https://github.com/anthropics/sandbox-runtime)). Profiles per preset are in ARCHITECTURE section 9. B is the fallback where `srt` fails, C an option for Linux and macOS users who want a VM boundary (Gondolin needs Node 23.6+ and QEMU, [Pi containerization doc](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/containerization.md)). D is rejected for Auto and Autonomous; the gate stays as UX and audit.
+Proposed option: "A", because it is the only option covering all three operating systems natively: `sandbox-exec` on macOS, bubblewrap on Linux, and on Windows a dedicated `srt-sandbox` user with a Windows Filtering Platform egress filter and write-restricted token, with network access forced through local proxies ([srt README](https://github.com/anthropics/sandbox-runtime)). Profiles per preset are in ARCHITECTURE section 9. B is the fallback where `srt` fails, C an option for Linux and macOS users who want a VM boundary (Gondolin needs Node 23.6+ and QEMU, [Pi containerization doc](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/containerization.md)). D is rejected for Guided and Autonomous; the gate stays as UX and audit.
 
 ### Consequences
 
