@@ -346,7 +346,7 @@ Pi also documents a Gondolin micro-VM extension and plain Docker as isolation op
 
 - Provider keys: extension stores them in `context.secrets` ([VS Code SecretStorage](https://code.visualstudio.com/api/references/vscode-api#SecretStorage)) and passes them to the core child over the RPC pipe at session start, held in memory only. CLI stores them in the OS keychain (`@napi-rs/keyring`: macOS Keychain, Windows Credential Manager, Linux Secret Service). Core implements Pi's `CredentialStore` over these.
 - ChatGPT sign-in: Pi's `openai-chatgpt` PKCE flow with a loopback callback on `127.0.0.1:1455`; tokens are written through the same `CredentialStore`.
-- Anthropic: API key only; Pi's Anthropic OAuth login method is removed from the provider list Blame exposes.
+- Anthropic: API key only; Pi's Anthropic OAuth login method is removed from the provider list Blame exposes. The OAuth allowlist lives in `packages/core/src/auth/policy.ts`: ChatGPT sign-in (`openai`, `openai-codex`) only; every other Pi OAuth login is removed by default.
 - Blame account: device flow; 15-minute access token, rotating refresh token (reuse of an old refresh token revokes the family).
 - Action: GitHub OIDC token exchanged for a 10-minute token scoped to one repo and the `review:write`, `brain:read` scopes. The API checks the OIDC `repository_id` claim against `repositories.github_repo_id` for an installed repo.
 - Server secrets (GitHub App private key, webhook secret): InsForge secrets; the private key is also envelope-encrypted at rest (R-SEC-3).
