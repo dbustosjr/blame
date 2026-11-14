@@ -140,7 +140,11 @@ export const ansi16: Readonly<Record<AnyColorToken, Ansi16Style>> = {
 
 const ESC = "\u001b[";
 
-/** SGR open sequence for a foreground token at a color level. Empty string means no color. */
+/**
+ * SGR open sequence for a foreground token at a color level. Empty string means no color.
+ * Carries color only, not the bold or dim from the ANSI 16 mapping. Callers building
+ * styled text should use `paint`.
+ */
 export function fgSequence(token: AnyColorToken, level: ColorLevel): string {
   switch (level) {
     case "none":
