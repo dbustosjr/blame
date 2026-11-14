@@ -17,7 +17,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <body className="min-h-dvh bg-background font-sans text-foreground antialiased">
         <a
           href="#main"
-          className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:rounded-control focus:bg-bg-panel focus:px-3 focus:py-2"
+          className="sr-only inline-flex min-h-6 items-center focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:rounded-control focus:bg-bg-panel focus:px-3 focus:py-2"
         >
           Skip to content
         </a>
@@ -26,7 +26,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             aria-label="Main"
             className="mx-auto flex max-w-[1200px] items-center justify-between px-6 py-4"
           >
-            <a href="/" className="font-semibold text-heading">
+            <a href="/" className="inline-flex min-h-6 items-center font-semibold text-heading">
               <span aria-hidden="true" className="text-brand">
                 {"\u258F\u203A "}
               </span>
@@ -34,13 +34,24 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             </a>
             <ul className="flex items-center gap-6 text-sm text-secondary-text">
               <li>
-                <a className="hover:text-primary-text" href="https://github.com/dbustosjr/blame">
+                <a
+                  className="inline-flex min-h-6 items-center hover:text-primary-text"
+                  href="/docs"
+                >
+                  Docs
+                </a>
+              </li>
+              <li>
+                <a
+                  className="inline-flex min-h-6 items-center hover:text-primary-text"
+                  href="https://github.com/dbustosjr/blame"
+                >
                   GitHub
                 </a>
               </li>
               <li>
                 <a
-                  className="rounded-control bg-primary px-3 py-2 font-medium text-primary-foreground"
+                  className="inline-flex min-h-6 items-center rounded-control bg-primary px-3 py-2 font-medium text-primary-foreground"
                   href="/install"
                 >
                   Install
