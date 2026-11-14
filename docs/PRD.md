@@ -789,7 +789,7 @@ The chart is the core proof, so the rule must be strict, public and shown in the
 |---|---|---|
 | D1 | **Name searchability.** Decided in DEC-9 | Atlas runs availability checks for "Blame AI" handles, domains and package scopes in W0-8, then brings the options to David |
 | D2 | **Repo name.** Done: `dbustosjr/blame` | None |
-| D3 | **Cut list approval** (section 12.3, C1 to C8) | Approve all, approve some, or keep the full 8 to 10 week MVP before any release |
+| D3 | **Cut list.** Decided by the team under David's standing go-ahead (2026-11-13), and he can override it | Adopted as release order only. Nothing is dropped, and every cut item still ships in the full MVP by week 10. The first usable release is at the end of week 6 |
 | D4 | **YC application date** | Needed to plan the 5-partner goal backward. If the date is under 8 weeks away, the cut list is required |
 | D5 | **"Never repeated" rule** (13.2) | Approve as drafted or adjust the 14 days and 5 exposures |
 | D6 | **Continuity with the November 8 scope** (proof-of-done and decision inbox) | Atlas suggests reusing its evidence-backed proof ideas in F3 and F24 and retiring the rest; confirm |
