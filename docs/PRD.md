@@ -12,7 +12,7 @@
 | Owner | David Bustos Jr |
 | PM | Atlas |
 | Status | Draft for David's review. Items marked **Proposal** need David's yes. |
-| Supersedes | PRD v0.1 (`/workspace/docx/prd-YrcKYP/prd-v0.1.md`) |
+| Supersedes | PRD v0.1 (internal draft, not in this repo) |
 | Audience | David (builder), the Blame agent team (Forge, Davinci, Cortex, Github Repo Analysis, Mr. Coordinator), coding agents working in the repo, and later YC and a16z speedrun reviewers |
 | Companion docs | `docs/TRD.md`, `docs/ARCHITECTURE.md` and `docs/adr/` (Forge), `docs/IMPLEMENTATION_PLAN.md` (Forge writes it, Atlas reviews it and keeps it in line with section 12), `DESIGN.md`, `docs/APP_FLOW.md`, `AGENTS.md`, `docs/TESTING.md` (Davinci) |
 
