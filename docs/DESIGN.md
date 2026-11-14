@@ -2,7 +2,7 @@
 
 This is the single source of truth for how Blame looks and behaves on all three surfaces: the website, the VS Code extension, and the terminal app. Colors come from `docs/BRAND.md`. This file adds the rules for using them, the type and spacing system, components, and the accessibility fixes the palette needs.
 
-Status: draft v0.1 by Davinci, 2026-11-13. The logo files have not been added to the repo yet, so logo sizing and clear-space rules are placeholders until they are.
+Status: draft v0.2 by Davinci, 2026-11-13. Logo files live in `brand/`.
 
 ## Sources and attribution
 
@@ -12,7 +12,17 @@ Status: draft v0.1 by Davinci, 2026-11-13. The logo files have not been added to
   - `design-md/warp/DESIGN.md` for block-based command output and terminal-first marketing sections.
   These were used for layout and hierarchy ideas only. No colors, fonts, logos, or copy from those brands are used.
 - Terminal interaction model: modeled on the Claude Code CLI as David requested (layout and interaction patterns only, in Blame's own colors and words).
-- Impeccable ([pbakaus/impeccable](https://github.com/pbakaus/impeccable), Apache 2.0) runs `critique`, `audit`, `adapt`, `harden` and `polish` against this file. Its `document` step must merge into this file, never create a second one.
+- Impeccable ([pbakaus/impeccable](https://github.com/pbakaus/impeccable), Apache 2.0) runs `critique`, `audit`, `adapt`, `harden` and `polish` against this file. Its `document` step must merge into this file, never create a second one. Always start Impeccable with `IMPECCABLE_LIVE_COPY_AGENT=off` so live Apply can never launch another coding agent with approvals bypassed.
+
+## Logo
+
+Files in `brand/`: `logo-full-dark.png` (icon and wordmark on the brand gradient), `wordmark-transparent.png`, `icon-transparent.png`, `icon-dark.png`. The icon is a vertical bar with a chevron, in `accent`; the wordmark is white.
+
+- Clear space on every side equals the height of the chevron.
+- Minimum size: icon 16px (favicon, status bar), full lockup 96px wide.
+- Use the icon in `accent` or white only, on `bg.base`, `bg.panel` or the brand gradient (`bg.base` to `bg.raised`, top left to bottom right). Never recolor it with status colors, add effects or stretch it.
+- Vector (SVG) versions are still needed for the website and the extension icon. Until then, export PNGs at 2x and 3x.
+- The icon doubles as Blame's prompt mark: the terminal input and the welcome box use a bar and chevron glyph (`▏›`, ASCII fallback `|>`) in `accent`, so the product and the logo read as one thing.
 
 ## Principles
 
@@ -66,7 +76,7 @@ Contrast ratios I computed against each background:
 - Muted text #6E6C94 is 3.97:1 on `bg.base`, 3.66:1 on `bg.panel` and 3.12:1 on `bg.raised`. Body text needs 4.5:1, so muted text moves to #8A88AA (5.80:1 on base, 4.55:1 on raised). #6E6C94 stays for disabled controls, which WCAG exempts.
 - Strong border #3B3790 is 2.00:1 on base. Input and button outlines need 3:1 when the outline is what shows the control, so controls use #5A5AAC (3.02:1 on panel, 3.28:1 on base). Card edges can keep #3B3790.
 - Terminal bright black #4A4878 is 2.33:1. Fine for decoration such as box borders. Any text in it that users must read uses #5B5986 or brighter.
-- Everything else passes: primary text 17.5:1, secondary 8.5:1, accent 11.5:1, every status color above 7:1 on base, and L3 #8B7CFF 6.0:1 on base and 4.73:1 on raised.
+- Everything else passes: primary text 17.5:1, secondary 8.5:1, accent 11.5:1, every status color above 7:1 on base, and the full trust ramp passes 4.5:1 on every surface (see the table above).
 - Primary button text is `bg.base` on `accent`, 11.46:1.
 
 ## Typography
@@ -90,7 +100,7 @@ Contrast ratios I computed against each background:
 
 ## Website
 
-Pages: home, install (extension and terminal tabs), docs entry, changelog. Built with Next.js, Tailwind and shadcn/ui, with tokens mapped into the Tailwind theme and shadcn CSS variables.
+Pages (PRD F23.3): home, install (extension and terminal tabs), how keys work (bring your own key and ChatGPT sign-in), privacy and data retention, a thin proof page (an opt-in public share of a project's never-repeated chart), docs entry, and changelog. Built with Next.js, Tailwind and shadcn/ui, with tokens mapped into the Tailwind theme and shadcn CSS variables.
 
 Home, top to bottom:
 1. Nav: wordmark, Docs, Changelog, GitHub, and an "Install" primary button.
@@ -109,7 +119,7 @@ Rules: max content width 1200px, 12-column grid, generous section spacing (96 to
 - Support `vscode-high-contrast` and `vscode-high-contrast-light` theme kinds; test both.
 - Use `@vscode/codicons` for icons. No custom icon font.
 - Views: Chat (webview), Review findings (tree view with file and line, one-click "Send to agent"), Brain (what Blame knows about this repo), Status bar item showing autonomy mode and trust level, click to change.
-- Diffs use VS Code's native diff editor, never a custom one.
+- Diffs use VS Code's native diff editor, never a custom one. PRD F23.1 also needs accept or reject per hunk; Forge to confirm the mechanism (for example inline CodeLens or the chat edit API) works alongside the native diff before this is final.
 - Every destructive or outside-the-workspace action shows a confirmation that names the exact file or command.
 
 ## Terminal app (modeled on Claude Code)
@@ -119,7 +129,7 @@ Layout, top to bottom:
 2. Transcript: user turns prefixed with `>` in secondary text. Assistant text in primary text. Tool calls on their own line with a bullet marker in `accent`, the tool name in bold, and arguments in muted text. Tool results indented under the call with a corner marker, collapsed after a few lines with a "show more" key hint.
 3. Diffs inline: added lines on a dark green-tinted background with success text, removed lines on a dark red-tinted background with error text, line numbers muted.
 4. Working indicator: a spinner glyph in `accent`, a short status word, elapsed time, and "esc to interrupt" in muted text.
-5. Input box: rounded border, `>` prompt, multi-line with shift+enter, slash commands with an autocomplete list, `@` to mention files.
+5. Input box: rounded border, the `▏›` prompt mark (ASCII `|>`), multi-line with shift+enter, slash commands with an autocomplete list, `@` to mention files.
 6. Footer line: autonomy preset on the left (Manual, Guided, Autonomous, colored by trust level), key hints on the right ("? for shortcuts").
 
 Behavior:
