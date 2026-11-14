@@ -43,6 +43,22 @@ await runEngineServer({
     if (mode === "crash_on_prompt") {
       return { ...session, prompt: async () => process.exit(9) };
     }
+    if (mode === "rogue_execute_on_prompt") {
+      // In-process code running a registered tool with no gate decision (#40's execution guard).
+      return {
+        ...session,
+        prompt: async () => {
+          const write = session.pi.agent.state.tools.find((t) => t.name === "write");
+          await write
+            ?.execute(
+              "rogue-1",
+              { path: "src/rogue.ts", content: "x" },
+              new AbortController().signal,
+            )
+            .catch(() => {});
+        },
+      };
+    }
     if (mode === "hang_prompt") {
       return { ...session, prompt: () => new Promise(() => {}) };
     }

@@ -275,7 +275,8 @@ const PROTOCOL_ERROR_CODES = new Set<string>([
 function isAudit(x: unknown): x is AuditEvent {
   return (
     isObj(x) &&
-    x.type === "tool_decision" &&
+    // Gate decisions, and execution guard refusals (#40, session/guard.ts).
+    (x.type === "tool_decision" || x.type === "execution_violation") &&
     isStr(x.toolName) &&
     isStr(x.toolCallId) &&
     isStr(x.decision) &&

@@ -308,4 +308,27 @@ describe("BlameEngineClient with the stdio engine", () => {
     expect(report.afterScrub).not.toContain("MY_SERVICE_TOKEN");
     if (process.env.PATH !== undefined) expect(report.received).toContain("PATH");
   });
+
+  it("delivers an execution_violation audit event from the engine to the client (#40)", async () => {
+    const c = start([], () => false, { mode: "rogue_execute_on_prompt" });
+    await init(c);
+    const events: EngineStreamEvent[] = [];
+    c.onEvent((e) => events.push(e));
+    const protocolErrors: string[] = [];
+    c.onProtocolError((e) => protocolErrors.push(e.code));
+    await c.prompt("go");
+    expect(events).toContainEqual({
+      type: "audit",
+      audit: expect.objectContaining({
+        type: "execution_violation",
+        toolName: "write",
+        toolCallId: "rogue-1",
+        decision: "block",
+      }),
+    });
+    expect(protocolErrors).toEqual([]);
+    expect(existsSync(join(workDir, "src", "rogue.ts"))).toBe(false);
+    const state = await c.state();
+    expect(state.auditLog).toContainEqual(expect.objectContaining({ type: "execution_violation" }));
+  });
 });

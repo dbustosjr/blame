@@ -183,4 +183,29 @@ describe("parseEngineMessage", () => {
   ])("rejects %s", (_name, msg) => {
     expect(parseEngineMessage(JSON.stringify(msg)).ok).toBe(false);
   });
+
+  it("accepts both audit event types from #40 and rejects an unknown one", () => {
+    const audit = (type: string) =>
+      JSON.stringify({
+        v,
+        type: "event",
+        event: {
+          type: "audit",
+          audit: {
+            type,
+            at: "2026-11-14T00:00:00.000Z",
+            toolName: "write",
+            toolCallId: "c1",
+            capability: "tool:write",
+            paths: [],
+            decision: "block",
+            reason: "no matching policy decision",
+            effectiveLevelId: "none",
+          },
+        },
+      });
+    expect(parseEngineMessage(audit("tool_decision")).ok).toBe(true);
+    expect(parseEngineMessage(audit("execution_violation")).ok).toBe(true);
+    expect(parseEngineMessage(audit("tool_run")).ok).toBe(false);
+  });
 });

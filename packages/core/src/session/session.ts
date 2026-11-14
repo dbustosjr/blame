@@ -140,14 +140,17 @@ export async function createBlameSession(options: BlameSessionOptions): Promise<
   const agentDir = join(configDir, "agent");
   const auditLog: AuditEvent[] = [];
   const auditLogLimit = Math.max(1, options.auditLogLimit ?? 1000);
+  const pushAudit = (event: AuditEvent) => {
+    auditLog.push(event);
+    if (auditLog.length > auditLogLimit) auditLog.splice(0, auditLog.length - auditLogLimit);
+  };
   const gate = createAutonomyGate({
     policy: options.policy ?? defaultPolicy,
     cwd: options.cwd,
     policyContext: options.policyContext,
     ...(options.approve ? { approve: options.approve } : {}),
     onAudit: (event) => {
-      auditLog.push(event);
-      if (auditLog.length > auditLogLimit) auditLog.splice(0, auditLog.length - auditLogLimit);
+      pushAudit(event);
       options.onAudit?.(event);
     },
   });
@@ -164,7 +167,7 @@ export async function createBlameSession(options: BlameSessionOptions): Promise<
       reason: violation.reason,
       effectiveLevelId: "none",
     };
-    auditLog.push(event);
+    pushAudit(event);
     options.onAudit?.(event);
   };
   // Defense in depth behind the tool_call hook: every tool's execute checks for this call's allow.
