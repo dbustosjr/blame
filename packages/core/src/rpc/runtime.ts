@@ -109,7 +109,7 @@ const CREDENTIAL_ENV =
  * Engine side of issue #38: Pi 1.5.2 resolves provider auth from `process.env` when no key is
  * stored (`defaultProviderAuthContext` in pi-ai `auth/context.js`, for example ANTHROPIC_API_KEY,
  * OPENAI_API_KEY). The engine takes keys only from `init.apiKey`, so it deletes credential-looking
- * variables from `env` (in place) before Pi starts. Returns the removed names.
+ * variables from `env` (in place) before any provider auth is resolved (Pi modules load first, but Pi reads env keys only when resolving auth during init). Returns the removed names.
  */
 export function scrubEngineEnv(env: Record<string, string | undefined>): string[] {
   const removed: string[] = [];
