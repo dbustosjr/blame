@@ -65,7 +65,8 @@ TypeScript on Node 22.19+ for every client package, Pi 1.5.x as the engine, `pi-
 blame/
   packages/
     core/            Only package that imports Pi. Session factory, Blame extensions, policy, brain client, index, sandbox adapter
-      src/session/       createBlameSession(), RPC server entry for the extension
+      src/session/       createBlameSession()
+      src/rpc/           engine stdio protocol, server entry and client (ADR-0006)
       src/extensions/    context-inject, autonomy-gate, audit, checkpoints, guardrails, redact, reproduce-first, docs-first
       src/policy/        trust levels, presets, safe zones, risky-action classifier (data driven)
       src/brain/         BrainStore interface; LocalBrainStore (SQLite) and RemoteBrainStore (REST)
@@ -104,7 +105,7 @@ Blame's use:
 
 1. `packages/core` exposes `createBlameSession({cwd, preset, brain, keys, sandbox})`. It calls `createAgentSession()` with a `DefaultResourceLoader` whose inline extension factories are Blame's extensions, a `ModelRuntime` backed by Blame's `CredentialStore` (so Pi never writes `auth.json`), and `SessionManager` storage under Blame's config dir.
 2. **CLI** runs core in process and reuses Pi's interactive mode for the TUI, branded through `piConfig` (`name: "blame"`, `configDir: ".blame"`, read from the starting package's `package.json` in `packages/coding-agent/src/config.ts`) and Blame's theme and UI extensions ([ADR-0002](adr/0002-terminal-ui-framework.md)).
-3. **Extension** spawns core as a child process (`node dist/rpc.js`) and talks to it with Pi's RPC records plus a few Blame-specific records (`blame_state`, `blame_approval`, `blame_checkpoints`). Reasons: a runaway agent never blocks the extension host; the whole agent process can sit inside the `srt` sandbox; and the child can use a newer Node than an editor fork ships (OQ-5). The child is launched with the editor's own Node (`process.execPath` with `ELECTRON_RUN_AS_NODE=1`) when its version is 22.19+, otherwise with a Node found on PATH, otherwise the extension shows a clear install prompt.
+3. **Extension** spawns core as a child process (`dist/rpc/main.js`) and talks to it with Blame's own versioned JSONL protocol: `init`, `prompt`, `abort`, `blame_state` and `shutdown` requests, streamed events, and typed `approval_request` and `approval_response` records ([ADR-0006](adr/0006-engine-stdio-protocol.md); Pi's RPC server rejects unknown command types, so Blame does not extend it). The framing matches Pi's RPC mode. Reasons for a child process: a runaway agent never blocks the extension host; the whole agent process can sit inside the `srt` sandbox; and the child can use a newer Node than an editor fork ships (OQ-5). The child is launched with the editor's own Node (`process.execPath` with `ELECTRON_RUN_AS_NODE=1`) when its version is 22.19+, otherwise with a Node found on PATH, otherwise the extension shows a clear install prompt.
 4. Pi version is pinned exactly; Blame code imports Pi only inside `packages/core` (TG-1), so an upgrade or fork touches one package.
 
 Hooks Blame installs:

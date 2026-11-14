@@ -20,7 +20,7 @@ Status (November 14, 2026): the Phase 0 monorepo scaffold and CI have merged, an
 | [docs/THREAT_MODEL.md](docs/THREAT_MODEL.md) | Touching keys, auth, the sandbox, webhooks, the Action, tenant data or anything that reads repo or PR text |
 | [docs/DESIGN.md](docs/DESIGN.md) | Any UI: website, extension webviews, TUI colors and layout |
 | [docs/BRAND.md](docs/BRAND.md) and [brand/](brand/) | Logo files and the original palette. DESIGN.md wins on final color values |
-| [docs/adr/](docs/adr/) | Before changing a decision. 0001 Pi engine, 0002 TUI on pi-tui, 0003 index and storage, 0004 reviewer as a GitHub Action, 0005 local sandbox (srt) |
+| [docs/adr/](docs/adr/) | Before changing a decision. 0001 Pi engine, 0002 TUI on pi-tui, 0003 index and storage, 0004 reviewer as a GitHub Action, 0005 local sandbox (srt), 0006 engine stdio protocol |
 | [docs/APP_FLOW.md](docs/APP_FLOW.md) | Building any screen or command. Journeys, states and error branches per surface |
 | [docs/TESTING.md](docs/TESTING.md) | Writing tests or claiming something works |
 

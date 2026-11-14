@@ -106,7 +106,7 @@ The policy decision itself stays in `packages/core/src/policy/` (TRD 4.4). The h
 
 ## RPC mode for the extension
 
-The extension spawns core as a child process (`node dist/rpc.js`) and speaks Pi's JSONL protocol (ARCHITECTURE 4, item 3). Blame's `rpc.js` builds a runtime with Blame's extensions and calls `runRpcMode(runtime)`. Do not run the stock `pi --mode rpc` binary: it would load the user's Pi config, extensions and `auth.json`.
+The extension spawns core as a child process (`dist/rpc/main.js`, run with `process.execPath`) and speaks Blame's own JSONL protocol, not Pi's RPC records (ARCHITECTURE 4, item 3; [ADR-0006](../../../docs/adr/0006-engine-stdio-protocol.md)). Pi 1.5.2's RPC server rejects unknown command types, so Blame does not extend `runRpcMode`; `src/rpc/server.ts` wraps `createBlameSession()` instead and sends the gate's "ask" as a typed `approval_request`. Do not run the stock `pi --mode rpc` binary: it would load the user's Pi config, extensions and `auth.json`. The Pi RPC notes below still apply to the framing, which Blame copies.
 
 Protocol facts from the 1.5.2 docs:
 
@@ -122,7 +122,7 @@ Protocol facts from the 1.5.2 docs:
 - The RPC `bash` command runs a shell command directly and adds the output to context. The extension host must never pass webview text into it; agent shell use goes through the gated `bash` tool only.
 - Shutdown: close the child's stdin and give Pi time to finish. SIGTERM also starts an orderly shutdown; a second signal exits at once. Handle startup failure, unexpected exit and your own deadlines, and restart a lost child from Pi's session file (ARCHITECTURE 5.1).
 
-About Pi's `RpcClient` (in `src/modes/rpc/rpc-client.ts` at 1.5.2): it spawns the literal command `node` with `cliPath` (default `dist/cli.js`) and has no method that sends `extension_ui_response`. Blame needs to launch the child with `process.execPath` and `ELECTRON_RUN_AS_NODE=1` when the editor's Node is 22.19 or newer, and it must answer approval dialogs. So write a small Blame client in `packages/core` modeled on `RpcClient` (pending map keyed by id, strict JSONL reader, exit and error handling) instead of using `RpcClient` as is. The extension imports that client from `@blame-ai/core`, which keeps the import boundary intact.
+About Pi's `RpcClient` (in `src/modes/rpc/rpc-client.ts` at 1.5.2): it spawns the literal command `node` with `cliPath` (default `dist/cli.js`) and has no method that sends `extension_ui_response`. Blame needs to launch the child with `process.execPath` and `ELECTRON_RUN_AS_NODE=1` when the editor's Node is 22.19 or newer, and it must answer approval dialogs. So Blame has its own client, `BlameEngineClient` in `packages/core/src/rpc/client.ts`, modeled on `RpcClient` (pending map keyed by id, strict JSONL reader, exit and error handling) and `resolveEngineRuntime` for the Node choice. The extension imports it from `@blame-ai/core`, which keeps the import boundary intact.
 
 Keys reach the child over the pipe at session start and stay in memory only (ARCHITECTURE 10). Never put a key in the child's argv or environment, where other local processes or crash reports can read it.
 
@@ -132,7 +132,7 @@ Keys reach the child over the pipe at session start and stay in memory only (ARC
 - A blocked tool call: the `tool_call` hook returns `{ block: true }`, the tool does not run, and an audit event records the reason (Phase 1 Verify).
 - No `auth.json`: run a session with a fake key from a test `CredentialStore` and assert no `auth.json` appears under Blame's config dir or `~/.pi` (FR-KEY-2).
 - Anthropic OAuth hidden: the login method list Blame exposes has no Anthropic OAuth entry (FR-KEY-4).
-- RPC round trip: spawn the built `rpc.js`, send `get_state`, send a `prompt`, read events until `agent_settled`, answer one `extension_ui_request` with `confirmed: false`, and assert the call was blocked.
+- Engine round trip: `packages/core/test/rpc-engine.test.ts` spawns the built engine with Pi's faux provider, sends `init` and `prompt`, answers an `approval_request` with approve, deny, a throw and silence, and asserts what ran. Extend it rather than writing a new harness.
 - Framing: a message containing U+2028 survives the reader intact.
 - Untrusted repo: a fixture repo with `.pi/extensions/evil.ts` does not load it.
 
