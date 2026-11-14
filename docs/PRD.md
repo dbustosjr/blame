@@ -39,7 +39,7 @@
 
 **Pitch.** "Keep your agent, or use ours. Either way, Blame remembers, reviews and proves." Neutrality comes from three places: any model provider through Pi and bring-your-own-key, a portable learning record, and a reviewer that works on any agent's PRs.
 
-**Honest timeline.** The full MVP is about 8 to 10 weeks for one builder with AI help. A first usable release in about 4 to 6 weeks is possible if David approves the cut list in section 12.3.
+**Honest timeline.** The full MVP is about 8 to 10 weeks for one builder with AI help. A first usable release at the end of week 6 is possible if David approves the cut list in section 12.3.
 
 **MVP goal.** 5 small teams or solo developers using Blame for real work before the YC application (date to be set, see D4).
 
@@ -165,7 +165,7 @@ v0.1 tried to be two products at once (a companion record and our own agent). v0
 
 ### 7.1 Feature table
 
-"FUR" = first usable release (about 4 to 6 weeks), **Proposal** pending David's yes on the cut list.
+"FUR" = first usable release (end of week 6), **Proposal** pending David's yes on the cut list.
 
 | ID | Feature | Area | Priority | In FUR (Proposal) | Change vs v0.1 |
 |---|---|---|---|---|---|
@@ -192,7 +192,7 @@ v0.1 tried to be two products at once (a companion record and our own agent). v0
 | F21 | Deploy and roll back | Dev workflow | Later | No | Unchanged |
 | F22 | Dependency health | Dev workflow | Later | No | Unchanged |
 | F23 | Works where you are: F23.1 VS Code extension, F23.2 CLI with TUI, F23.3 website, F23.4 MCP server, F23.5 GitHub App | Surfaces | MVP (all five); Next (Slack, desktop app) | F23.1, F23.2, F23.3 (install page and thin proof page), F23.4; F23.5 review-only | Rewritten for DEC-3 |
-| F24 | Independent AI review | Review | MVP | Thin version (section 12.3) | **New** |
+| F24 | Independent AI review | Review | MVP | No, thin version in week 7 right after FUR (section 12.3) | **New** |
 
 Cross-cutting MVP requirements (section 8): `R-BYOK` (bring-your-own-key), `R-AUTO` (autonomy presets), `R-SEC` (tenant isolation, secrets), `R-RET` (data retention), `R-PERF`, `R-A11Y`, `R-OBS`.
 
@@ -652,7 +652,7 @@ ADRs Forge owns (from the skill plan): Pi versus a custom loop (decided, record 
 
 ### 12.1 Why the timeline changed
 
-v0.1 promised about 3 weeks for roughly 11 MVP items. v0.2 adds an extension, a custom TUI, a sandbox that enforces autonomy, the second brain and an independent reviewer. For one builder with AI help, the full MVP is realistically **8 to 10 weeks** after Week 0. A first usable release in **4 to 6 weeks** needs the cut list in 12.3.
+v0.1 promised about 3 weeks for roughly 11 MVP items. v0.2 adds an extension, a custom TUI, a sandbox that enforces autonomy, the second brain and an independent reviewer. For one builder with AI help, the full MVP is realistically **8 to 10 weeks** after Week 0. A first usable release at the **end of week 6** needs the cut list in 12.3.
 
 ### 12.2 Week 0 (this week and next, before building)
 
@@ -672,7 +672,7 @@ Design-partner outreach then **starts in Week 1** (moved from Week 3 in v0.1), o
 
 ### 12.3 MVP cut list (Proposal, pending David's yes)
 
-To reach a first usable release (FUR) in about 4 to 6 weeks, defer these until after FUR:
+To reach a first usable release (FUR) at the end of week 6, defer these until after FUR:
 
 | # | Defer | Why it is safe to defer | What FUR keeps instead |
 |---|---|---|---|
@@ -681,7 +681,7 @@ To reach a first usable release (FUR) in about 4 to 6 weeks, defer these until a
 | C3 | F14 live preview | Already Next in v0.1; needs hosting per PR | Diffs and test results in the panel and TUI |
 | C4 | Hosted sandbox | Costs money and adds an attack surface | Local sandbox on the user's machine |
 | C5 | Web dashboard beyond the install page and a thin proof page | The editor and terminal are where the work happens | Proof record view inside the extension and `blame lessons` in the CLI |
-| C6 | F24 full scope | Index and cross-file detection are the hardest parts | Thin F24: review on PRs in connected repos with a file-level index, "Fix with agent", confirmed finding to lesson, planted-bug benchmark of 25 bugs |
+| C6 | F24 full scope | Index and cross-file detection are the hardest parts | Thin F24 in week 7, first after FUR: review on PRs in connected repos with a file-level index, "Fix with agent", confirmed finding to lesson, planted-bug benchmark of 25 bugs |
 | C7 | Windsurf and Linux certification for the extension | Same extension; fewer test matrices | VS Code and Cursor on Windows plus one other OS |
 | C8 | F5 revoke for the ChatGPT session | Users can sign out in the provider settings | Revoke for MCP tokens, GitHub App access and stored keys |
 
@@ -691,11 +691,14 @@ Weeks start after Week 0. Each milestone ends with a verification check that can
 
 | Weeks | Milestone | Main work | Exit check |
 |---|---|---|---|
-| 1 to 2 | Core and CLI | `packages/core` on Pi, BYOK and ChatGPT sign-in, guardrails (F15), reproduce-before-fix (F8), SDLC loop (F9), docs-first (F11), CLI TUI v0 with palette | A seeded bug task in the CLI produces a failing reproduction, a fix and a PR on a test repo, with cost shown |
-| 3 to 4 | Extension and autonomy | `apps/vscode` chat panel, diffs, checkpoints (F10), presets and trust (F2, R-AUTO), safe zones (F18), local sandbox, secrets (F17), audit log (F4) | Same task in VS Code and Cursor in all three presets; sandbox escape tests pass |
-| 5 to 6 | Learning record and brain (**FUR here if cut list approved**) | F3 lessons and regression tests, F6 brain (links, lifecycle, dedupe, staleness, injection, hybrid search, export), MCP server, website install page and data page, thin F24 | A repeated mistake is prevented or caught and the chart shows it; retrieval eval meets G6; 2 design partners installed |
-| 7 to 8 | Independent review | F24 full: self-updating index, cross-file detection, benchmark at 25 or more bugs; GitHub App failure capture; thin proof page | Reviewer meets G5 on the benchmark; a Claude Code PR gets a review and a one-click fix |
+| 1 | Setup and Pi spike | Repo scaffold and CI, Pi spike with BYOK, partner track starts (target list and outreach drafts, David approves every message) | Pi runs a tool-calling task from `packages/core` in CI; outreach drafts are ready for David |
+| 2 to 3 | Core and CLI | `packages/core` on Pi: guardrails (F15), reproduce-before-fix (F8), SDLC loop (F9), docs-first (F11), local brain; CLI TUI v0 with palette in week 3. ChatGPT sign-in only if the open-source decision is made, otherwise BYOK only | A seeded bug task in the CLI produces a failing reproduction, a fix and a PR on a test repo, with cost shown |
+| 4 to 5 | Extension, autonomy and install pages | Static install, BYOK and data pages in week 4; `apps/vscode` chat panel, diffs, checkpoints (F10), presets and trust (F2, R-AUTO), safe zones (F18), local sandbox, secrets (F17), audit log (F4); first partner installs on the CLI | Same task in VS Code and Cursor in all three presets; sandbox escape tests pass; install page live |
+| 5 to 6 | Backend, learning record and brain (**FUR at end of week 6 if cut list approved**) | Backend and MCP server (stdio first), F3 lessons and regression tests, F6 brain (links, lifecycle, dedupe, staleness, injection, hybrid search, export) | A repeated mistake is prevented or caught and the chart shows it; retrieval eval meets G6; 2 design partners installed |
+| 7 to 8 | Independent review | Thin F24 first in week 7, then full F24: self-updating index, cross-file detection, benchmark at 25 or more bugs; GitHub App failure capture; thin proof page | Reviewer meets G5 on the benchmark; a Claude Code PR gets a review and a one-click fix |
 | 9 to 10 | Hardening and partners | Security audit, R-SEC cross-tenant suite, R-RET deletion jobs, F7 if kept, polish with Impeccable, demo video | 5 design partners active; release gates in 12.5 pass |
+
+If David wants the thin F24 inside the FUR, something else has to come out of weeks 5 to 6. The suggested cut is the HTTP MCP transport, keeping stdio only.
 
 ### 12.5 Release gates (from Davinci's plan)
 
@@ -825,7 +828,7 @@ The chart is the core proof, so the rule must be strict, public and shown in the
 8. **New F24 Independent AI review**: reviewer on every agent PR, self-updating index, cross-file detection, one-click fix handoff, findings become lessons, planted-bug benchmark.
 9. **Tenant isolation and data retention** promoted to MVP requirements (R-SEC, R-RET).
 10. Added success criteria per goal, explicit non-goals NG1 to NG10, and acceptance criteria for every MVP feature.
-11. **Timeline**: MVP is now 8 to 10 weeks plus Week 0, with a proposed cut list for a 4 to 6 week first usable release.
+11. **Timeline**: MVP is now 8 to 10 weeks plus Week 0, with a proposed cut list for a first usable release at the end of week 6.
 12. Added Week 0 tasks: free-tier unknowns, sandbox and reviewer location, terms checks, fair "never repeated" rule, eval sets, outreach drafts. Outreach moved from Week 3 to Week 1.
 13. Drafted a strict "never repeated" rule with exposure requirement and a separate "mistakes avoided" count.
 14. Added the brand palette, terminal ANSI palette and trust ramp; design ownership pointed to `DESIGN.md`.
