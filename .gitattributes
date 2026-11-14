@@ -1,0 +1,20 @@
+# Keep LF in the repo and in every checkout, so Windows does not rewrite snapshots and fixtures to CRLF.
+* text=auto eol=lf
+
+# Binary files: never touch line endings or diff as text.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.otf binary
+*.pdf binary
+*.zip binary
+*.gz binary
+*.vsix binary
+*.node binary
+*.wasm binary
