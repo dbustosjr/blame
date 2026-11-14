@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
@@ -175,5 +175,33 @@ describe("createBlameSession", () => {
     await s.prompt("hi");
     expect(s.extensionErrors).toEqual([]);
     expect(s.pi.getActiveToolNames().sort()).toEqual(["bash", "edit", "read", "write"]);
+  });
+});
+
+describe("createBlameSession search tools", () => {
+  it("uses Blame's secret-safe ls when a host turns search tools on", async () => {
+    writeFileSync(join(workDir, ".env"), "TOKEN=supersecret\n");
+    writeFileSync(join(workDir, "README.md"), "hi\n");
+    let toolOutput = "";
+    faux.setResponses([
+      fauxAssistantMessage(fauxToolCall("ls", {}), { stopReason: "toolUse" }),
+      (context) => {
+        toolOutput = JSON.stringify(context.messages.at(-1));
+        return fauxAssistantMessage("done");
+      },
+    ]);
+    const s = await start({ tools: ["read", "bash", "edit", "write", "ls", "grep", "find"] });
+    await s.prompt("list files");
+    expect(s.pi.getActiveToolNames().sort()).toEqual([
+      "bash",
+      "edit",
+      "find",
+      "grep",
+      "ls",
+      "read",
+      "write",
+    ]);
+    expect(toolOutput).toContain("README.md");
+    expect(toolOutput).not.toContain(".env");
   });
 });

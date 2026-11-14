@@ -71,11 +71,11 @@ export function toRepoPath(
   return { path: rel === "" ? "." : rel.split(pathApi.sep).join("/"), inside };
 }
 
-/** True when a path or glob names a credential file or sits in a credential directory. */
+/** True when a path or glob names a credential file, is a credential directory, or sits in one. */
 export function isSecretPath(path: string): boolean {
   const segments = path.split(/[\\/]+/).filter((s) => s !== "");
   const name = segments.at(-1) ?? "";
-  if (segments.slice(0, -1).some((s) => SECRET_DIR.test(s))) return true;
+  if (segments.some((s) => SECRET_DIR.test(s))) return true;
   if (SECRET_TEMPLATE.test(name)) return false;
   // Globs such as "**/.env*", "*.pem" or "id_*": try each wildcard as empty and as one character.
   const empty = name.replace(/[*?]+/g, "");

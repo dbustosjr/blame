@@ -14,6 +14,7 @@ import { type KeyStore, keyStoreCredentials } from "../keys/keystore.js";
 import { defaultPolicy } from "../policy/seed.js";
 import type { PolicyConfig, PolicyContext } from "../policy/types.js";
 import { type Approver, type AuditEvent, createAutonomyGate } from "./gate.js";
+import { secretSafeSearchExtension } from "./search.js";
 
 /** Appended to Pi's system prompt in every Blame session. */
 export const BLAME_SYSTEM_PROMPT = [
@@ -29,7 +30,11 @@ export const BLAME_CONTEXT_MESSAGE_TYPE = "blame-context";
 /** Pi's UI approval dialogs dismiss after this long, and a dismissed dialog means deny. */
 export const APPROVAL_TIMEOUT_MS = 5 * 60 * 1000;
 
-/** Pi's built-in tools Blame turns on. The gate classifies each of them. */
+/**
+ * Pi's built-in tools Blame turns on by default. The gate classifies each of them. grep, find and
+ * ls are off by default; a host can add them through `tools`, and they are always Blame's
+ * secret-safe versions.
+ */
 export const BLAME_TOOLS = ["read", "bash", "edit", "write"] as const;
 
 export interface BlameModelSelection {
@@ -83,6 +88,8 @@ export interface BlameSessionOptions {
   readonly systemPrompt?: { readonly append?: readonly string[] };
   /** Advanced and tests: a prepared model runtime (for example with Pi's faux provider). */
   readonly modelRuntime?: ModelRuntime;
+  /** Tool names to turn on. Default: BLAME_TOOLS. */
+  readonly tools?: readonly string[];
 }
 
 export interface BlameSession {
@@ -169,6 +176,7 @@ export async function createBlameSession(options: BlameSessionOptions): Promise<
     noPromptTemplates: true,
     noThemes: true,
     extensionFactories: [
+      { name: "blame-secret-safe-search", factory: secretSafeSearchExtension(options.cwd) },
       { name: "blame-autonomy-gate", factory: autonomyGate },
       { name: "blame-context-inject", factory: contextInject },
     ],
@@ -187,7 +195,7 @@ export async function createBlameSession(options: BlameSessionOptions): Promise<
     resourceLoader,
     settingsManager,
     sessionManager: SessionManager.inMemory(options.cwd),
-    tools: [...BLAME_TOOLS],
+    tools: [...(options.tools ?? BLAME_TOOLS)],
   });
 
   return {
