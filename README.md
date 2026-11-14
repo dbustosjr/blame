@@ -1,5 +1,7 @@
 # Blame
 
+<p align="center"><img src="brand/logo-full-dark.png" alt="Blame logo" width="480"></p>
+
 Blame is a coding agent that learns from its own mistakes and can show you the proof.
 
 Most coding agents forget. A reviewer rejects a change, a test fails, a fix gets reverted, and a week later the same kind of mistake shows up again. Blame keeps a record of what went wrong, turns each failure into a lesson backed by a test or a check, and tracks whether that mistake ever comes back. Over time you get a clear picture of how the agent is improving on your codebase, not just a promise that it is.
@@ -34,10 +36,11 @@ apps/
   web/          website with install instructions
 packages/
   core/         agent, lessons, and second brain shared by both apps
+brand/          logo files and core colors
 docs/           product and technical docs
 ```
 
-The folders fill in as the build moves forward. The [docs](docs/) folder holds the brand colors in [BRAND.md](docs/BRAND.md), and will hold the product requirements, architecture, and build plan, written so both people and coding agents can read them easily.
+The folders fill in as the build moves forward. Logo files and core colors are in [brand](brand/). The [docs](docs/) folder holds the product requirements, architecture, design system, and build plan, and [AGENTS.md](AGENTS.md) tells coding agents how to work in this repo.
 
 ## Status
 
