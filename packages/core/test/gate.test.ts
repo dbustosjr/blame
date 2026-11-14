@@ -55,6 +55,40 @@ describe("classifyToolCall", () => {
     });
   });
 
+  it("marks reads outside the workspace as risky (#22)", () => {
+    expect(classifyToolCall("read", { path: "../other/x.ts" }, cwd)).toMatchObject({
+      capability: "read",
+      riskyClass: "path_outside_workspace",
+    });
+  });
+
+  it("marks secret-looking reads as secret_access (#22)", () => {
+    for (const path of ["../other-repo/.env", "~/.ssh/id_ed25519", ".aws/credentials", "a.pem"]) {
+      expect(classifyToolCall("read", { path }, cwd)).toMatchObject({
+        riskyClass: "secret_access",
+      });
+    }
+  });
+
+  it("checks grep and find patterns that walk above the workspace (#22)", () => {
+    expect(classifyToolCall("find", { pattern: "../**/*.ts" }, cwd)).toMatchObject({
+      riskyClass: "path_outside_workspace",
+    });
+    expect(classifyToolCall("grep", { pattern: "x", glob: "../../**/*" }, cwd)).toMatchObject({
+      riskyClass: "path_outside_workspace",
+    });
+    expect(classifyToolCall("find", { pattern: "/etc/**" }, cwd)).toMatchObject({
+      riskyClass: "path_outside_workspace",
+    });
+    expect(classifyToolCall("find", { pattern: "**/id_*" }, cwd)).toMatchObject({
+      riskyClass: "secret_access",
+    });
+    expect(classifyToolCall("find", { pattern: "src/**/*.ts" }, cwd)).toEqual({
+      capability: "read",
+      paths: [],
+    });
+  });
+
   it("treats every shell command as risky until the Phase 2 classifier lands", () => {
     expect(classifyToolCall("bash", { command: "ls" }, cwd)).toEqual({
       capability: "run_allowlisted",

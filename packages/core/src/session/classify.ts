@@ -62,7 +62,12 @@ export function toRepoPath(
   const root = realish(pathApi.resolve(cwd), pathApi, realpath);
   const target = realish(pathApi.resolve(cwd, path), pathApi, realpath);
   const rel = pathApi.relative(root, target);
-  const inside = rel !== ".." && !rel.startsWith(`..${pathApi.sep}`) && !pathApi.isAbsolute(rel);
+  // "~" is not expanded by node:path, but a tool or shell may expand it, so never call it inside.
+  const inside =
+    rel !== ".." &&
+    !rel.startsWith(`..${pathApi.sep}`) &&
+    !pathApi.isAbsolute(rel) &&
+    !/^~(?:[\\/]|$)/.test(path);
   return { path: rel === "" ? "." : rel.split(pathApi.sep).join("/"), inside };
 }
 
@@ -76,6 +81,27 @@ export function isSecretPath(path: string): boolean {
   const empty = name.replace(/[*?]+/g, "");
   const filled = name.replace(/[*?]+/g, "x");
   return [name, empty, filled].some((n) => SECRET_NAME.test(n));
+}
+
+/** The path-like pattern a search tool walks: grep's `glob` or find's `pattern`. */
+function searchPattern(toolName: string, input: Record<string, unknown>): string | undefined {
+  const value = toolName === "grep" ? input.glob : toolName === "find" ? input.pattern : undefined;
+  return typeof value === "string" ? value : undefined;
+}
+
+/** A search pattern that names secrets, or that is absolute or climbs with `..` (#22). */
+function patternRisk(pattern: string, pathApi: PlatformPath): string | undefined {
+  if (isSecretPath(pattern)) return "secret_access";
+  const climbs = pattern.split(/[\\/]+/).includes("..");
+  if (
+    climbs ||
+    pathApi.isAbsolute(pattern) ||
+    nodePath.posix.isAbsolute(pattern) ||
+    /^~(?:[\\/]|$)/.test(pattern)
+  ) {
+    return "path_outside_workspace";
+  }
+  return undefined;
 }
 
 function pathOf(input: Record<string, unknown>): string | undefined {
@@ -95,8 +121,9 @@ function riskFor(rawPath: string, repoPath: string, inside: boolean): string | u
  * - Reads and edits outside the workspace are `path_outside_workspace`, and credential files are
  *   `secret_access` even inside it (secret wins when both apply). Both are risky, so every seed
  *   preset asks, including Manual, which otherwise auto-allows `read`.
- * - grep, find and ls are judged by their search root; a grep `glob` that targets secrets is
- *   `secret_access`.
+ * - grep, find and ls are judged by their search root, and grep's `glob` and find's `pattern`
+ *   are checked too: secret names are `secret_access`, and absolute or `..` patterns are
+ *   `path_outside_workspace` (#22).
  * - Shell commands are always risky until the Phase 2 classifier and allow-list land, and unknown
  *   tools get an unknown capability so the policy blocks them (fail closed).
  */
@@ -108,8 +135,9 @@ export function classifyToolCall(
 ): ActionRequest {
   const rawPath = pathOf(input);
   if (READ_TOOLS.has(toolName)) {
-    const glob = toolName === "grep" && typeof input.glob === "string" ? input.glob : undefined;
-    const globRisk = glob !== undefined && isSecretPath(glob) ? "secret_access" : undefined;
+    const glob = searchPattern(toolName, input);
+    const globRisk =
+      glob === undefined ? undefined : patternRisk(glob, options.pathApi ?? nodePath);
     if (rawPath === undefined) {
       return globRisk
         ? { capability: "read", paths: [], riskyClass: globRisk }
