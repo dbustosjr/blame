@@ -21,7 +21,8 @@
   },
   "dependencies": {
     "@blame-ai/core": "workspace:*",
-    "@blame-ai/design-tokens": "workspace:*"
+    "@blame-ai/design-tokens": "workspace:*",
+    "@napi-rs/keyring": "2.1.2"
   },
   "devDependencies": {
     "@types/node": "24.19.2",
