@@ -157,6 +157,8 @@ export interface KeychainKeyStoreOptions {
   readonly loadKeyring?: () => Promise<KeyringModule>;
   /** Defaults to `process.platform`. */
   readonly platform?: NodeJS.Platform;
+  /** Non-fatal problems. Messages hold provider ids only, never values. Default console.warn. */
+  readonly warn?: (message: string) => void;
 }
 
 const loadNapiKeyring = async (): Promise<KeyringModule> =>
@@ -165,6 +167,7 @@ const loadNapiKeyring = async (): Promise<KeyringModule> =>
 export class KeychainKeyStore implements KeyStore, OAuthTokenStore {
   readonly #load: () => Promise<KeyringModule>;
   readonly #platform: NodeJS.Platform;
+  readonly #warn: (message: string) => void;
   #module: Promise<KeyringModule> | undefined;
   /** Writes touch the key and the index, so they run one at a time in this process. */
   #writes: Promise<unknown> = Promise.resolve();
@@ -172,6 +175,7 @@ export class KeychainKeyStore implements KeyStore, OAuthTokenStore {
   constructor(options: KeychainKeyStoreOptions = {}) {
     this.#load = options.loadKeyring ?? loadNapiKeyring;
     this.#platform = options.platform ?? process.platform;
+    this.#warn = options.warn ?? ((message) => console.warn(message));
   }
 
   async get(providerId: string): Promise<string | undefined> {
@@ -194,9 +198,16 @@ export class KeychainKeyStore implements KeyStore, OAuthTokenStore {
     }
     await this.#serialize(() =>
       this.#call("set", async () => {
-        await (await this.#entry(account)).setPassword(value);
+        // Index first, so a key is never stored without being listed (and revoke can find it).
         const ids = await this.#readIndex();
-        if (!ids.includes(providerId)) await this.#writeIndex([...ids, providerId]);
+        const added = !ids.includes(providerId);
+        if (added) await this.#writeIndex([...ids, providerId]);
+        try {
+          await (await this.#entry(account)).setPassword(value);
+        } catch (error) {
+          if (added) await this.#writeIndex(ids).catch(() => undefined);
+          throw error;
+        }
       }),
     );
   }
@@ -235,19 +246,18 @@ export class KeychainKeyStore implements KeyStore, OAuthTokenStore {
       return undefined;
     }
     return this.#call("get", async () => {
-      const manifest = await this.#readManifest(manifestAccount);
-      if (manifest === undefined) return undefined;
-      let json = "";
-      for (let i = 0; i < manifest.chunks; i++) {
-        const part = await (
-          await this.#entry(`${manifestAccount}.${manifest.gen}.${i}`)
-        ).getPassword();
-        if (part === null) throw corrupt("get");
-        json += part;
+      // A missing chunk can mean another process just switched generations in a refresh, so
+      // re-read the manifest and try once more before calling the sign-in damaged.
+      for (let attempt = 0; attempt < 2; attempt++) {
+        const manifest = await this.#readManifest(manifestAccount);
+        if (manifest === undefined) return undefined;
+        const json = await this.#readChunks(manifestAccount, manifest);
+        if (json === undefined) continue;
+        const tokens = parseTokens(json);
+        if (tokens === undefined) throw corrupt("get");
+        return tokens;
       }
-      const tokens = parseTokens(json);
-      if (tokens === undefined) throw corrupt("get");
-      return tokens;
+      throw corrupt("get");
     });
   }
 
@@ -266,17 +276,34 @@ export class KeychainKeyStore implements KeyStore, OAuthTokenStore {
     await this.#serialize(() =>
       this.#call("set", async () => {
         const previous = await this.#readManifest(manifestAccount).catch(() => undefined);
-        const gen = randomBytes(8).toString("hex");
-        for (const [i, chunk] of chunks.entries()) {
-          await (await this.#entry(`${manifestAccount}.${gen}.${i}`)).setPassword(chunk);
-        }
-        await (await this.#entry(manifestAccount)).setPassword(
-          JSON.stringify({ v: 1, gen, chunks: chunks.length }),
-        );
-        if (previous) await this.#deleteChunks(manifestAccount, previous);
+        // Index first, so stored tokens are always listed.
         const ids = await this.#readList(KEYCHAIN_OAUTH_INDEX_ACCOUNT);
-        if (!ids.includes(providerId)) {
-          await this.#writeList(KEYCHAIN_OAUTH_INDEX_ACCOUNT, [...ids, providerId]);
+        const added = !ids.includes(providerId);
+        if (added) await this.#writeList(KEYCHAIN_OAUTH_INDEX_ACCOUNT, [...ids, providerId]);
+        const gen = randomBytes(8).toString("hex");
+        const next = { gen, chunks: chunks.length };
+        try {
+          for (const [i, chunk] of chunks.entries()) {
+            await (await this.#entry(`${manifestAccount}.${gen}.${i}`)).setPassword(chunk);
+          }
+          await (await this.#entry(manifestAccount)).setPassword(JSON.stringify({ v: 1, ...next }));
+        } catch (error) {
+          // Leave no refresh token behind that the manifest (and so logout) cannot reach.
+          await this.#deleteChunks(manifestAccount, next, true);
+          if (added && previous === undefined) {
+            await this.#writeList(KEYCHAIN_OAUTH_INDEX_ACCOUNT, ids).catch(() => undefined);
+          }
+          throw error;
+        }
+        // The save has succeeded. Removing the old generation is best effort.
+        if (previous) {
+          try {
+            await this.#deleteChunks(manifestAccount, previous, false);
+          } catch {
+            this.#warn(
+              `Blame saved the new sign-in for ${providerId} but could not remove the previous one from the OS keychain.`,
+            );
+          }
         }
       }),
     );
@@ -326,10 +353,36 @@ export class KeychainKeyStore implements KeyStore, OAuthTokenStore {
     throw corrupt("get");
   }
 
-  async #deleteChunks(account: string, manifest: { gen: string; chunks: number }): Promise<void> {
+  /** Undefined when a chunk is missing. */
+  async #readChunks(
+    account: string,
+    manifest: { gen: string; chunks: number },
+  ): Promise<string | undefined> {
+    let json = "";
     for (let i = 0; i < manifest.chunks; i++) {
-      await (await this.#entry(`${account}.${manifest.gen}.${i}`)).deletePassword();
+      const part = await (await this.#entry(`${account}.${manifest.gen}.${i}`)).getPassword();
+      if (part === null) return undefined;
+      json += part;
     }
+    return json;
+  }
+
+  /** With `bestEffort`, tries every chunk and never throws. */
+  async #deleteChunks(
+    account: string,
+    manifest: { gen: string; chunks: number },
+    bestEffort = false,
+  ): Promise<void> {
+    let failed = false;
+    for (let i = 0; i < manifest.chunks; i++) {
+      try {
+        await (await this.#entry(`${account}.${manifest.gen}.${i}`)).deletePassword();
+      } catch (error) {
+        if (!bestEffort) throw error;
+        failed = true;
+      }
+    }
+    if (failed) this.#warn(`Some partial sign-in entries could not be removed (${account}).`);
   }
 
   async #readIndex(): Promise<string[]> {

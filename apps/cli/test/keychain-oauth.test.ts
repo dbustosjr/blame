@@ -163,3 +163,140 @@ describe("KeychainKeyStore OAuth never leaks a token", () => {
     expect(String(error)).not.toContain(FAKE_ACCESS);
   });
 });
+
+describe("KeychainKeyStore OAuth write failures (review of #47)", () => {
+  const allSecrets = (keyring: ReturnType<typeof fakeKeyring>) =>
+    [...keyring.entries.values()].join("\n");
+
+  it("removes the new generation's chunks when a chunk write fails", async () => {
+    const { store, keyring } = storeWith();
+    let writes = 0;
+    keyring.failWhen = (op, account) =>
+      op === "set" && /^oauth\.openai\.[0-9a-f]+\.\d+$/.test(account) && ++writes === 3;
+    const big = tokens(`fake-${"a".repeat(2500)}`);
+    await expect(store.setOAuth("openai", big)).rejects.toBeInstanceOf(KeychainError);
+    keyring.failWhen = undefined;
+    expect(allSecrets(keyring)).not.toContain("fake-aaaa");
+    expect(allSecrets(keyring)).not.toContain(FAKE_REFRESH);
+    expect(await store.getOAuth("openai")).toBeUndefined();
+  });
+
+  it("removes the new chunks and keeps the old sign-in when the manifest write fails", async () => {
+    const { store, keyring } = storeWith();
+    await store.setOAuth("openai", tokens());
+    keyring.failWhen = (op, account) => op === "set" && account === "oauth.openai";
+    await expect(
+      store.setOAuth("openai", tokens("fake-access-new", "fake-refresh-new")),
+    ).rejects.toBeInstanceOf(KeychainError);
+    keyring.failWhen = undefined;
+    expect(allSecrets(keyring)).not.toContain("fake-refresh-new");
+    expect(await store.getOAuth("openai")).toEqual(tokens());
+  });
+
+  it("treats old-generation cleanup as best effort and logs only the provider id", async () => {
+    const warnings: string[] = [];
+    const keyring = fakeKeyring();
+    const store = new KeychainKeyStore({
+      loadKeyring: async () => keyring,
+      platform: "win32",
+      warn: (m) => warnings.push(m),
+    });
+    await store.setOAuth("openai", tokens());
+    keyring.failWhen = (op, account) =>
+      op === "delete" && /^oauth\.openai\.[0-9a-f]+\.\d+$/.test(account);
+    await expect(
+      store.setOAuth("openai", tokens("fake-access-new", "fake-refresh-new")),
+    ).resolves.toBeUndefined();
+    keyring.failWhen = undefined;
+    expect(await store.getOAuth("openai")).toEqual(tokens("fake-access-new", "fake-refresh-new"));
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toContain("openai");
+    expect(warnings.join()).not.toContain(FAKE_ACCESS);
+    expect(warnings.join()).not.toContain("fake-access-new");
+  });
+
+  it("a save whose cleanup fails still lets keyStoreCredentials clear the API key", async () => {
+    const keyring = fakeKeyring();
+    const store = new KeychainKeyStore({
+      loadKeyring: async () => keyring,
+      platform: "win32",
+      warn: () => {},
+    });
+    const credentials = keyStoreCredentials(store);
+    await store.setOAuth("openai", tokens());
+    await store.set("openai", "fake-key-for-tests");
+    keyring.failWhen = (op, account) =>
+      op === "delete" && /^oauth\.openai\.[0-9a-f]+\.\d+$/.test(account);
+    await credentials.modify("openai", async () => ({
+      type: "oauth",
+      ...tokens("fake-access-2", "fake-refresh-2"),
+    }));
+    keyring.failWhen = undefined;
+    expect(await store.get("openai")).toBeUndefined();
+  });
+
+  it("logout reaches tokens even when the OAuth index is missing the provider", async () => {
+    const { store, keyring } = storeWith();
+    const credentials = keyStoreCredentials(store);
+    await store.setOAuth("openai", tokens());
+    keyring.entries.delete("blame\u0000index.oauth");
+    await credentials.delete("openai");
+    expect(allSecrets(keyring)).not.toContain(FAKE_REFRESH);
+  });
+
+  it("re-reads the manifest once when a chunk vanished under a concurrent refresh", async () => {
+    const { store, keyring } = storeWith();
+    await store.setOAuth("openai", tokens());
+    // What the keychain looks like after another process finished a refresh.
+    const after = storeWith();
+    await after.store.setOAuth("openai", tokens("fake-access-other", "fake-refresh-other"));
+    let manifestReads = 0;
+    keyring.beforeGet = (account) => {
+      if (account === "oauth.openai") manifestReads++;
+      // The refresh lands right after this process read the old manifest.
+      if (/^oauth\.openai\.[0-9a-f]+\.0$/.test(account) && manifestReads === 1) {
+        keyring.entries.clear();
+        for (const [k, v] of after.keyring.entries) keyring.entries.set(k, v);
+      }
+    };
+    expect(await store.getOAuth("openai")).toEqual(
+      tokens("fake-access-other", "fake-refresh-other"),
+    );
+    expect(manifestReads).toBe(2);
+  });
+
+  it("still reports a damaged sign-in when the retry finds the chunk missing too", async () => {
+    const { store, keyring } = storeWith();
+    await store.setOAuth("openai", tokens());
+    let manifestReads = 0;
+    keyring.beforeGet = (account) => {
+      if (account === "oauth.openai") manifestReads++;
+    };
+    for (const id of keyring.entries.keys()) {
+      if (/oauth\.openai\.[0-9a-f]+\.0$/.test(id)) keyring.entries.delete(id);
+    }
+    await expect(store.getOAuth("openai")).rejects.toMatchObject({ code: "corrupt" });
+    expect(manifestReads).toBe(2);
+  });
+});
+
+describe("KeychainKeyStore API key index (nit from #45)", () => {
+  it("rolls the index back when the key write fails, so list stays accurate", async () => {
+    const { store, keyring } = storeWith();
+    keyring.failWhen = (op, account) => op === "set" && account === "apiKey.openai";
+    await expect(store.set("openai", "fake-key-for-tests")).rejects.toBeInstanceOf(KeychainError);
+    keyring.failWhen = undefined;
+    expect(await store.list()).toEqual([]);
+  });
+
+  it("writes the index before the key", async () => {
+    const { store, keyring } = storeWith();
+    const order: string[] = [];
+    keyring.failWhen = (op, account) => {
+      if (op === "set") order.push(account);
+      return false;
+    };
+    await store.set("openai", "fake-key-for-tests");
+    expect(order).toEqual(["index.apiKey", "apiKey.openai"]);
+  });
+});

@@ -137,8 +137,8 @@ export function keyStoreCredentials(keys: KeyStore): CredentialStore {
   };
   const deleteAll = async (providerId: string) => {
     await keys.delete(providerId);
-    if (oauth && (await oauth.listOAuth()).includes(providerId))
-      await oauth.deleteOAuth(providerId);
+    // Unconditional: logout must reach tokens even when the store's index lost the provider.
+    if (oauth) await oauth.deleteOAuth(providerId);
   };
 
   return {
@@ -175,9 +175,7 @@ export function keyStoreCredentials(keys: KeyStore): CredentialStore {
           return undefined;
         }
         await keys.set(providerId, next.key);
-        if (oauth && (await oauth.listOAuth()).includes(providerId)) {
-          await oauth.deleteOAuth(providerId);
-        }
+        if (oauth) await oauth.deleteOAuth(providerId);
         return { type: "api_key", key: next.key };
       });
     },
