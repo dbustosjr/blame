@@ -1,5 +1,6 @@
 **
 !dist/extension.js
+!dist/engine.mjs
 !package.json
 !README.md
 !LICENSE

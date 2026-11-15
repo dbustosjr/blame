@@ -18,6 +18,7 @@ import { applyBlameAuthPolicy, policyCredentialStore } from "../auth/policy.js";
 import { type KeyStore, keyStoreCredentials } from "../keys/keystore.js";
 import { defaultPolicy } from "../policy/seed.js";
 import type { PolicyConfig, PolicyContext } from "../policy/types.js";
+import { APPROVAL_TIMEOUT_MS } from "./constants.js";
 import { type Approver, type AuditEvent, createAutonomyGate } from "./gate.js";
 import { createExecutionLedger, guardTool } from "./guard.js";
 import { type AnyToolDefinition, createSecretSafeSearchTools } from "./search.js";
@@ -35,7 +36,7 @@ export const BLAME_SYSTEM_PROMPT = [
 export const BLAME_CONTEXT_MESSAGE_TYPE = "blame-context";
 
 /** Pi's UI approval dialogs dismiss after this long, and a dismissed dialog means deny. */
-export const APPROVAL_TIMEOUT_MS = 5 * 60 * 1000;
+export { APPROVAL_TIMEOUT_MS };
 
 /**
  * Pi's built-in tools Blame turns on by default. The gate classifies each of them. grep, find and

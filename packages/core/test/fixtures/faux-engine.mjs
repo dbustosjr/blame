@@ -23,6 +23,8 @@ if (process.env.BLAME_FAUX_ENV_OUT) {
 const steps = JSON.parse(process.env.BLAME_FAUX_STEPS ?? "[]");
 const mode = process.env.BLAME_FAUX_MODE ?? "";
 
+if (mode === "stderr_banner") process.stderr.write("faux engine stderr banner\n");
+
 const faux = fauxProvider();
 faux.setResponses(
   steps.map((step) =>
