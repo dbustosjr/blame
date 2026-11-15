@@ -73,11 +73,11 @@ blame/
       src/index/         code index: tree-sitter symbols, import graph, chunks, embeddings
       src/review/        reviewer pipeline shared by `blame review` and the Action
       src/sandbox/       srt adapter, profiles per preset
-      src/keys/          CredentialStore implementations (keychain, SecretStorage bridge)
+      src/keys/          KeyStore interface, in-memory store, CredentialStore bridge for Pi (the keychain backend lives in apps/cli)
     api-client/      TypeScript client generated from apps/api/openapi.json
     design-tokens/   Tokens from DESIGN.md for every surface: ANSI palette (truecolor, 256, 16, NO_COLOR), CSS variables, later the Pi theme JSON
   apps/
-    cli/             `blame` binary: Pi interactive mode branded via piConfig + Blame extensions; subcommands
+    cli/             `blame` binary: Pi interactive mode branded via piConfig + Blame extensions; subcommands; `src/keys/` OS keychain KeyStore
     vscode/          Extension host code (thin) + webviews (React); spawns core as a child process
     web/             Next.js site: install, data page, proof page, thin dashboard later
     api/             FastAPI app, worker loop, MCP HTTP endpoint, migrations runner
@@ -345,6 +345,7 @@ Pi also documents a Gondolin micro-VM extension and plain Docker as isolation op
 ## 10. Auth, BYOK and key storage
 
 - Provider keys: extension stores them in `context.secrets` ([VS Code SecretStorage](https://code.visualstudio.com/api/references/vscode-api#SecretStorage)) and passes them to the core child over the RPC pipe at session start, held in memory only. CLI stores them in the OS keychain (`@napi-rs/keyring`: macOS Keychain, Windows Credential Manager, Linux Secret Service). Core implements Pi's `CredentialStore` over these.
+- CLI keychain backend: `KeychainKeyStore` in `apps/cli/src/keys/keychain.ts` implements core's `KeyStore`. It lives in the CLI package, not core, so `packages/core` and the extension bundle never depend on the native binary, and it loads `@napi-rs/keyring` with a dynamic `import()` on first use. Entries use service `blame` and account `apiKey.<provider>` (the extension uses `blame.apiKey.<provider>` in SecretStorage), plus an `index.apiKey` entry that lists provider ids and never holds a secret, so `list()` does not read every secret. On Linux it requires Secret Service, so a missing keyring is an error rather than a silent switch to the kernel keyring, which forgets keys at reboot. When the keychain is missing, locked or has no prebuilt binary for the platform, it throws a `KeychainError` (`keychain_unavailable`, `keychain_locked`, `too_long`) with next steps and never falls back to a plaintext file or an environment variable. Users on headless Linux can still set the provider's own environment variable for Pi to read; Blame never writes one. `--insecure-file-store` (TRD FR-KEY-1) is not built. The in-memory store stays available through `createCliKeyStore({ backend: "memory" })` for tests and as an explicit opt-in.
 - ChatGPT sign-in: Pi's `openai-chatgpt` PKCE flow with a loopback callback on `127.0.0.1:1455`; tokens are written through the same `CredentialStore`.
 - Anthropic: API key only; Pi's Anthropic OAuth login method is removed from the provider list Blame exposes. The OAuth allowlist lives in `packages/core/src/auth/policy.ts`: ChatGPT sign-in (`openai`, `openai-codex`) only; every other Pi OAuth login is removed by default.
 - Blame account: device flow; 15-minute access token, rotating refresh token (reuse of an old refresh token revokes the family).
