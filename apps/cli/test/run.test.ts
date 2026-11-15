@@ -14,6 +14,7 @@ import { resolveEngineEntry } from "../src/engine/entry.js";
 import type { KeySource } from "../src/engine/keySource.js";
 import { type RunTaskOptions, runTask } from "../src/engine/run.js";
 import { createTheme, stripAnsi } from "../src/theme.js";
+import { controlChars } from "./control.js";
 
 // Real child processes: core's built engine entry, and core's faux engine fixture (the same
 // stdio server with Pi's scripted faux model). test/setup/build.ts builds core first.
@@ -245,6 +246,99 @@ describe("runTask with real engine processes", () => {
     const loud = setup({ faux: { steps: [{ text: "hi" }], mode: "stderr_banner" }, verbose: true });
     expect(await loud.run()).toBe(0);
     expect(loud.err()).toContain("engine: faux engine stderr banner");
+  });
+});
+
+function fakeClient(
+  script: (emit: { event: (e: unknown) => void; stderr: (t: string) => void }) => void,
+) {
+  const listeners = {
+    event: [] as Array<(e: unknown) => void>,
+    stderr: [] as Array<(t: string) => void>,
+  };
+  return {
+    start: async () => ({ protocol: 1, engine: "blame" }),
+    init: async () => {},
+    prompt: async () => {
+      script({
+        event: (e) => {
+          for (const l of listeners.event) l(e);
+        },
+        stderr: (t) => {
+          for (const l of listeners.stderr) l(t);
+        },
+      });
+    },
+    abort: async () => {},
+    stop: async () => {},
+    onEvent: (l: (e: unknown) => void) => {
+      listeners.event.push(l);
+      return () => {};
+    },
+    onExit: () => () => {},
+    onStderr: (l: (t: string) => void) => {
+      listeners.stderr.push(l);
+      return () => {};
+    },
+  };
+}
+
+describe("runTask terminal safety", () => {
+  it("strips escape sequences from model text even when split across deltas, keeping \\n and \\t", async () => {
+    const t = setup();
+    let raw = "";
+    Object.assign(t.options, { stdout: { write: (s: string) => (raw += s) } });
+    t.options.createClient = () =>
+      fakeClient(({ event }) => {
+        event({ type: "text_delta", text: "line\t1\nmove \u001b[" });
+        event({ type: "text_delta", text: "1A\u001b[2Kgone \u001b]0;ti" });
+        event({ type: "text_delta", text: "tle\u0007done\u009b2J" });
+        event({ type: "settled" });
+      }) as never;
+    expect(await t.run()).toBe(0);
+    expect(raw).toContain("line\t1\nmove gone done");
+    expect(controlChars(raw, "\n\t")).toEqual([]);
+  });
+
+  it("strips escapes from engine errors, block reasons and tool names", async () => {
+    const t = setup();
+    let raw = "";
+    Object.assign(t.options, { stdout: { write: (s: string) => (raw += s) } });
+    Object.assign(t.options, { stderr: { write: (s: string) => (raw += s) } });
+    t.options.createClient = () =>
+      fakeClient(({ event }) => {
+        event({ type: "tool_start", toolCallId: "1", toolName: "ba\u001b[2Ksh" });
+        event({
+          type: "audit",
+          audit: {
+            type: "tool_decision",
+            toolName: "bash",
+            decision: "block",
+            reason: "no\u001b[1A way",
+          },
+        });
+        event({ type: "error", message: "bad\u001b]0;x\u0007 thing" });
+        event({ type: "settled" });
+      }) as never;
+    expect(await t.run()).toBe(1);
+    expect(raw).toContain("no way");
+    expect(raw).toContain("bad thing");
+    expect(raw).toContain("ba\\x1b[2Ksh");
+    expect(controlChars(raw, "\n")).toEqual([]);
+  });
+
+  it("rotates engine.log to engine.log.1 past the size cap", async () => {
+    const t = setup();
+    Object.assign(t.options, { logMaxBytes: 64 });
+    t.options.createClient = () =>
+      fakeClient(({ stderr }) => {
+        for (let i = 0; i < 10; i++) stderr(`line ${i} ${"x".repeat(20)}\n`);
+      }) as never;
+    expect(await t.run()).toBe(0);
+    const log = t.options.logFile as string;
+    expect(existsSync(`${log}.1`)).toBe(true);
+    expect(readFileSync(log, "utf8").length).toBeLessThanOrEqual(64);
+    expect(readFileSync(log, "utf8")).toContain("line 9");
   });
 });
 

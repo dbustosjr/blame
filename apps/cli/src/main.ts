@@ -83,7 +83,15 @@ export async function main(argv: readonly string[], io: Io): Promise<number> {
         configDir,
         entry: resolveEngineEntry(),
         keySource: defaultKeySources(io),
-        approve: createTerminalApprover({ input: stdin, output: process.stderr, theme }),
+        approve: createTerminalApprover({
+          input: stdin,
+          output: process.stderr,
+          theme,
+          // A second Ctrl-C at an approval stops the task through the same SIGINT path.
+          onInterruptAgain: () => {
+            process.emit("SIGINT", "SIGINT");
+          },
+        }),
         stdout: io.stdout,
         stderr: io.stderr,
         theme,

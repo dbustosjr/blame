@@ -1,7 +1,7 @@
 import { createInterface } from "node:readline";
 import { type ApprovalPrompt, riskLabel } from "@blame-ai/core/engine-client";
 import { stripAnsi, type Theme } from "../theme.js";
-import { wrapField, wrapText } from "../wrap.js";
+import { escapeControl, wrapField, wrapText } from "../wrap.js";
 
 const BORDERS = {
   unicode: { tl: "\u256D", tr: "\u256E", bl: "\u2570", br: "\u256F", h: "\u2500", v: "\u2502" },
@@ -24,7 +24,8 @@ export function renderApprovalBox(req: ApprovalPrompt, theme: Theme, columns = 8
   const hint = (lines: string[]) => lines.map((l) => theme.role("hint", l));
   const risk = riskLabel(req.riskyClass);
   const lines = [
-    `Blame wants to run ${theme.token("text.primary", req.toolName, { bold: true })}`,
+    // Every field is escaped before wrapping (wrapText escapes paths and the reason).
+    `Blame wants to run ${theme.token("text.primary", escapeControl(req.toolName), { bold: true })}`,
     ...req.paths.flatMap((p) => wrapField("file:", p, inner)),
     ...wrapText(req.reason, inner),
     ...(risk === undefined ? [] : hint(wrapField("risk:", risk, inner))),
@@ -50,6 +51,8 @@ export interface TerminalApproverOptions {
   readonly input: NodeJS.ReadableStream & { isTTY?: boolean };
   readonly output: NodeJS.WritableStream & { columns?: number };
   readonly theme: Theme;
+  /** Called on a second Ctrl-C at an approval: stop the whole task (main emits SIGINT). */
+  readonly onInterruptAgain?: () => void;
 }
 
 /**
@@ -60,15 +63,17 @@ export function createTerminalApprover(
   options: TerminalApproverOptions,
 ): (req: ApprovalPrompt, signal: AbortSignal) => Promise<boolean> {
   const { input, output, theme } = options;
+  let interruptedOnce = false;
   return (req, signal) =>
     new Promise<boolean>((resolve) => {
       if (signal.aborted) {
         resolve(false);
         return;
       }
+      const tool = escapeControl(req.toolName);
       if (input.isTTY !== true) {
         output.write(
-          `${theme.token("status.error", "Denied:")} no terminal to ask in, so ${req.toolName} was not run.\n`,
+          `${theme.token("status.error", "Denied:")} no terminal to ask in, so ${tool} was not run.\n`,
         );
         resolve(false);
         return;
@@ -93,11 +98,19 @@ export function createTerminalApprover(
       };
       const onAbort = () => finish(false, "the approval timed out or was cancelled.");
       signal.addEventListener("abort", onAbort, { once: true });
-      rl.on("SIGINT", () => finish(false, "cancelled with Ctrl-C."));
+      rl.on("SIGINT", () => {
+        if (interruptedOnce) {
+          finish(false, "cancelled with Ctrl-C. Stopping the task.");
+          options.onInterruptAgain?.();
+          return;
+        }
+        interruptedOnce = true;
+        finish(false, `${tool} was not run. The task continues; press Ctrl-C again to stop it.`);
+      });
       rl.on("close", () => finish(false));
       rl.question("Choose 1 or 2 [2]: ", (answer) => {
         const approved = YES.has(answer.trim().toLowerCase()) && !signal.aborted;
-        finish(approved, approved ? undefined : `${req.toolName} was not run.`, true);
+        finish(approved, approved ? undefined : `${tool} was not run.`, true);
       });
     });
 }

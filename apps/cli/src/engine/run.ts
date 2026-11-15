@@ -1,4 +1,4 @@
-import { appendFileSync, mkdirSync } from "node:fs";
+import { appendFileSync, mkdirSync, renameSync, statSync } from "node:fs";
 import { dirname } from "node:path";
 import {
   type ApprovalHandler,
@@ -11,7 +11,9 @@ import {
   redactDeep,
   type StreamRedactor,
 } from "@blame-ai/core/engine-client";
+import { createTerminalSanitizer, sanitizeForTerminal } from "../sanitize.js";
 import type { Theme } from "../theme.js";
+import { escapeControl } from "../wrap.js";
 import type { KeySource } from "./keySource.js";
 
 /** The part of BlameEngineClient runTask uses, so tests can pass a fake. */
@@ -50,6 +52,8 @@ export interface RunTaskOptions {
   /** Engine stderr to our stderr. Otherwise it goes to `logFile`. Redacted either way. */
   readonly verbose: boolean;
   readonly logFile?: string;
+  /** engine.log rotates to engine.log.1 past this size. Default about 5 MB. */
+  readonly logMaxBytes?: number;
   readonly signals?: SignalSource;
   createClient?: (options: BlameEngineClientOptions) => EngineClientLike;
   readonly approvalTimeoutMs?: number;
@@ -66,7 +70,10 @@ export async function runTask(options: RunTaskOptions): Promise<number> {
   const secrets: string[] = [];
   const redact = (text: string) => redactDeep(text, secrets);
   const fail = (message: string) => {
-    stderr.write(`${theme.token("status.error", "blame:")} ${redact(message)}\n`);
+    // Engine and model text can carry terminal escapes; strip them before printing.
+    stderr.write(
+      `${theme.token("status.error", "blame:")} ${sanitizeForTerminal(redact(message))}\n`,
+    );
   };
 
   const apiKey = await options.keySource.get(options.providerId);
@@ -82,9 +89,11 @@ export async function runTask(options: RunTaskOptions): Promise<number> {
   // through stream redactors (never per-chunk redactDeep). Verbose stderr is also printed by line.
   const stderrRedactor: StreamRedactor = createStreamRedactor(secrets);
   let stderrLine = "";
+  const stderrSanitizer = createTerminalSanitizer();
+  const logMaxBytes = options.logMaxBytes ?? 5 * 1024 * 1024;
   const writeEngineLog = (clean: string, final: boolean) => {
     if (options.verbose) {
-      stderrLine += clean;
+      stderrLine += stderrSanitizer.push(clean);
       const lines = stderrLine.split(/\r?\n/);
       stderrLine = final ? "" : (lines.pop() ?? "");
       for (const line of lines) {
@@ -95,6 +104,15 @@ export async function runTask(options: RunTaskOptions): Promise<number> {
     if (options.logFile === undefined || clean === "") return;
     try {
       mkdirSync(dirname(options.logFile), { recursive: true });
+      let size = 0;
+      try {
+        size = statSync(options.logFile).size;
+      } catch {
+        // No log yet.
+      }
+      if (size > 0 && size + Buffer.byteLength(clean) > logMaxBytes) {
+        renameSync(options.logFile, `${options.logFile}.1`);
+      }
       appendFileSync(options.logFile, clean, { mode: 0o600 });
     } catch {
       // Logging must never take the run down.
@@ -122,10 +140,16 @@ export async function runTask(options: RunTaskOptions): Promise<number> {
   const newline = () => {
     if (!atLineStart) print("\n");
   };
+  // Model text: stream redactor, then a stateful terminal sanitizer (escape sequences can be
+  // split across deltas). Only \n and \t survive.
   let textRedactor: StreamRedactor = createStreamRedactor(secrets);
+  let textSanitizer = createTerminalSanitizer();
   const flushText = () => {
-    print(theme.role("assistantText", textRedactor.flush()));
+    print(
+      theme.role("assistantText", textSanitizer.push(textRedactor.flush()) + textSanitizer.flush()),
+    );
     textRedactor = createStreamRedactor(secrets);
+    textSanitizer = createTerminalSanitizer();
   };
   const bullet = theme.unicode ? "\u25CF" : "*";
   const corner = theme.unicode ? "\u23BF" : "L";
@@ -136,12 +160,12 @@ export async function runTask(options: RunTaskOptions): Promise<number> {
     if (event.type !== "text_delta") flushText();
     switch (event.type) {
       case "text_delta":
-        print(theme.role("assistantText", textRedactor.push(event.text)));
+        print(theme.role("assistantText", textSanitizer.push(textRedactor.push(event.text))));
         break;
       case "tool_start":
         newline();
         print(
-          `${theme.role("toolBullet", bullet)} ${theme.token("text.primary", event.toolName, { bold: true })}\n`,
+          `${theme.role("toolBullet", bullet)} ${theme.token("text.primary", escapeControl(event.toolName), { bold: true })}\n`,
         );
         break;
       case "tool_end":
@@ -151,7 +175,7 @@ export async function runTask(options: RunTaskOptions): Promise<number> {
         if (event.audit.type === "tool_decision" && event.audit.decision === "block") {
           newline();
           print(
-            `  ${theme.token("status.error", `blocked ${event.audit.toolName}:`)} ${redact(event.audit.reason)}\n`,
+            `  ${theme.token("status.error", `blocked ${escapeControl(event.audit.toolName)}:`)} ${sanitizeForTerminal(redact(event.audit.reason))}\n`,
           );
         }
         break;

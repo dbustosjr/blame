@@ -3,6 +3,7 @@ import type { ApprovalPrompt } from "@blame-ai/core/engine-client";
 import { describe, expect, it } from "vitest";
 import { askHidden, createTerminalApprover, renderApprovalBox } from "../src/engine/approval.js";
 import { createTheme, stripAnsi } from "../src/theme.js";
+import { controlChars } from "./control.js";
 
 const write: ApprovalPrompt = {
   id: "a1",
@@ -54,6 +55,30 @@ describe("terminal approval box (DESIGN.md permission prompt)", () => {
     expect(lines.every((l) => l.length === 60)).toBe(true);
     const joined = lines.map((l) => l.slice(2, -2).trim()).join("");
     expect(joined).toContain(long);
+  });
+
+  it("shows a path with double spaces and control characters exactly, escaped", () => {
+    const box = stripAnsi(renderApprovalBox({ ...write, paths: ["a  b.txt\u001b[2J"] }, theme));
+    expect(box).toContain("file: a  b.txt\\x1b[2J");
+    expect(box).not.toContain("\u001b[2J");
+  });
+
+  it("escapes an ESC cursor-move sequence and C1 CSI in every field: tool, path, reason", () => {
+    const box = stripAnsi(
+      renderApprovalBox(
+        {
+          ...write,
+          toolName: "wr\u001b[2Kite",
+          paths: ["src/\u001b[1A\u001b[2Kevil.ts"],
+          reason: "because\u009b2J",
+        },
+        theme,
+      ),
+    );
+    expect(box).toContain("wr\\x1b[2Kite");
+    expect(box).toContain("src/\\x1b[1A\\x1b[2Kevil.ts");
+    expect(box).toContain("because\\x9b2J");
+    expect(controlChars(box, "\n")).toEqual([]);
   });
 
   it("wraps a long reason too", () => {
@@ -135,6 +160,26 @@ describe("terminal approver fails closed", () => {
     const before = raw.slice(Math.max(0, deniedAt - 30), deniedAt);
     expect(before).not.toContain("\u001b[38;2;255;107;107m");
     expect(before).toContain("\u001b[38;2;169;167;204m");
+  });
+
+  it("Ctrl-C denies and says the task continues; a second Ctrl-C asks to stop the task", async () => {
+    const stops: number[] = [];
+    const t = tty();
+    const ask = createTerminalApprover({
+      input: t.input,
+      output: t.output,
+      theme,
+      onInterruptAgain: () => stops.push(1),
+    });
+    const first = ask(write, new AbortController().signal);
+    t.input.write("\u0003");
+    expect(await first).toBe(false);
+    expect(t.shown()).toMatch(/denied.*task continues.*Ctrl-C again to stop/is);
+    expect(stops).toHaveLength(0);
+    const second = ask(write, new AbortController().signal);
+    t.input.write("\u0003");
+    expect(await second).toBe(false);
+    expect(stops).toHaveLength(1);
   });
 
   it("denies on Ctrl-C", async () => {
