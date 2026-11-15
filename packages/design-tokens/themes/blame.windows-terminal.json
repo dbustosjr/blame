@@ -1,0 +1,23 @@
+{
+  "name": "Blame",
+  "background": "#04052E",
+  "foreground": "#E8E6FF",
+  "cursorColor": "#B9C2FF",
+  "selectionBackground": "#22007C",
+  "black": "#04052E",
+  "red": "#FF6B6B",
+  "green": "#3ECF8E",
+  "yellow": "#F5B544",
+  "blue": "#6EA8FF",
+  "purple": "#B18CFF",
+  "cyan": "#6ED3D3",
+  "white": "#E8E6FF",
+  "brightBlack": "#5B5986",
+  "brightRed": "#FF8A8A",
+  "brightGreen": "#6FE3AE",
+  "brightYellow": "#FFC95E",
+  "brightBlue": "#8FBFFF",
+  "brightPurple": "#CDB4FF",
+  "brightCyan": "#8FE3E3",
+  "brightWhite": "#FFFFFF"
+}

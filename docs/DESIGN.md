@@ -183,6 +183,8 @@ For users who want the full look in a terminal that only takes 16 colors, ship t
 | Cyan | #6ED3D3 | #8FE3E3 |
 | White | #E8E6FF | #FFFFFF |
 
+Generated scheme files for Windows Terminal, iTerm2 and VS Code live in `packages/design-tokens/themes`.
+
 ## Component states checklist
 
 Every component in every surface ships with: default, hover, focus, active, disabled, loading, empty, error, and permission denied. Impeccable `audit` and `harden` are run against these before a UI PR is marked ready.
