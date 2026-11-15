@@ -1,6 +1,6 @@
 ---
-status: proposed
-date: 2026-11-14
+status: accepted
+date: 2026-11-15
 decision-makers: David Bustos Jr
 consulted: Davinci (Pi 1.5.2 RPC findings)
 informed: Atlas, Forge
@@ -34,7 +34,7 @@ How should the host carry prompts, events, approvals and Blame state to the engi
 
 ## Decision Outcome
 
-Proposed option: "A", because it needs nothing from Pi beyond the SDK Blame already uses, keeps one pipe, and lets the approval be a first-class typed message.
+Chosen option: "A", because it needs nothing from Pi beyond the SDK Blame already uses, keeps one pipe, and lets the approval be a first-class typed message.
 
 Protocol v1 (`packages/core/src/rpc/protocol.ts`):
 
