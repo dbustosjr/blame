@@ -9,6 +9,9 @@ import {
 } from "../src/keys/keychain.js";
 import { fakeKeyring } from "./fake-keyring.js";
 
+/** Anything shaped like an env var name (FOO_BAR, OPENAI_API_KEY, ANTHROPIC_AUTH_TOKEN). */
+const ENV_VAR_NAME = /\b[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+\b/g;
+
 // Obviously fake values. gitleaks runs on every PR.
 const FAKE_KEY = "fake-key-for-tests-0001";
 const OTHER_FAKE_KEY = "fake-key-for-tests-0002";
@@ -121,8 +124,9 @@ describe("KeychainKeyStore when the keychain is missing or locked", () => {
     );
     expect(error).toBeInstanceOf(KeychainError);
     expect(error).toMatchObject({ code: "keychain_unavailable" });
-    expect((error as Error).message).toContain("BLAME_API_KEY");
-    expect((error as Error).message).not.toContain("OPENAI_API_KEY");
+    // Every env-var-looking name in the message must be BLAME_API_KEY: no provider variables.
+    const envNames = new Set((error as Error).message.match(ENV_VAR_NAME) ?? []);
+    expect([...envNames]).toEqual(["BLAME_API_KEY"]);
   });
 
   it("reports headless Linux with no Secret Service as keychain_unavailable", async () => {
