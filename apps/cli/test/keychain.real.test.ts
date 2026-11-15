@@ -31,6 +31,29 @@ describe.skipIf(!OPTED_IN)(
       expect(await store.get(provider)).toBeUndefined();
       expect(await store.list()).not.toContain(provider);
     });
+
+    it("saves, refreshes and deletes a JWT-sized fake ChatGPT sign-in", async () => {
+      const store = new KeychainKeyStore();
+      // openai-codex is on the OAuth allowlist; save and restore anything already there.
+      const provider = "openai-codex";
+      const existing = await store.getOAuth(provider);
+      const fake = (n: string) => ({
+        access: `fake-access-${n}-${"a".repeat(3000)}`,
+        refresh: `fake-refresh-${n}-${randomUUID()}`,
+        expires: Date.now() + 3_600_000,
+      });
+      try {
+        await store.setOAuth(provider, fake("1"));
+        expect((await store.getOAuth(provider))?.access).toMatch(/^fake-access-1-/);
+        const rotated = fake("2");
+        await store.setOAuth(provider, rotated);
+        expect(await store.getOAuth(provider)).toEqual(rotated);
+      } finally {
+        await store.deleteOAuth(provider);
+        if (existing) await store.setOAuth(provider, existing);
+      }
+      if (!existing) expect(await store.getOAuth(provider)).toBeUndefined();
+    });
   },
 );
 

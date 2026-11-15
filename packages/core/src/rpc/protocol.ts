@@ -210,8 +210,23 @@ function initParamsProblem(p: unknown): string | undefined {
   if (p.approvalTimeoutMs !== undefined && !isTimeout(p.approvalTimeoutMs)) {
     return "params.approvalTimeoutMs must be a positive integer";
   }
+  if (OAUTH_FIELDS.some((field) => p[field] !== undefined)) {
+    return "params may not carry OAuth tokens: ChatGPT sign-in tokens stay in the host's keychain or SecretStorage";
+  }
   return undefined;
 }
+
+/** OAuth tokens never cross the engine protocol (THREAT_MODEL T-02). Names only, never values. */
+const OAUTH_FIELDS = [
+  "oauth",
+  "credentials",
+  "credential",
+  "tokens",
+  "access",
+  "refresh",
+  "accessToken",
+  "refreshToken",
+] as const;
 
 const NO_PARAM_METHODS = new Set(["abort", "blame_state", "shutdown"]);
 

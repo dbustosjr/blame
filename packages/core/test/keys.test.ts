@@ -25,13 +25,13 @@ describe("keyStoreCredentials", () => {
     expect(await store.list()).toEqual([{ providerId: "anthropic", type: "api_key" }]);
   });
 
-  it("writes api keys through modify and refuses OAuth credentials for now", async () => {
+  it("writes api keys through modify and refuses OAuth for blocked providers", async () => {
     const keys = new InMemoryKeyStore();
     const store = keyStoreCredentials(keys);
     await store.modify("openai", async () => ({ type: "api_key", key: "sk-test-3" }));
     expect(await keys.get("openai")).toBe("sk-test-3");
     await expect(
-      store.modify("openai", async () => ({
+      store.modify("anthropic", async () => ({
         type: "oauth",
         access: "a",
         refresh: "r",
