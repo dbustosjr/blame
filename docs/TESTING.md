@@ -187,7 +187,7 @@ Release gates (PRD 12.5): works end to end in extension and TUI in all three pre
 | Extension in VS Code and Cursor | Required | Required for FUR if Linux is deferred | After C7 (pending) | FUR needs Windows plus one other OS (C7). Windsurf after C7 |
 | CLI terminals | Windows Terminal, PowerShell, WSL, VS Code terminal | macOS Terminal, iTerm2, VS Code terminal | Any terminal, VS Code terminal | 80 columns, truecolor, ANSI 256, ANSI 16, `NO_COLOR`, non-TTY |
 | Sandbox (`srt`) escape suite | Required before FUR (one-time admin step for the sandbox user) | Required before FUR | Required before FUR | ADR-0005 |
-| Keychain | Credential Manager | Keychain | Secret Service; no service means env vars only, no plaintext file without `--insecure-file-store` | FR-KEY-1 |
+| Keychain | Credential Manager | Keychain | Secret Service; no service or a locked keychain means a clear error, no fallback to a file or env var | FR-KEY-1 |
 | Node | 22.19+ in the extension host or on PATH; clear prompt otherwise | same | same | TRD OQ-5 |
 
 ## 10. Manual QA checklist (before FUR and each release)
