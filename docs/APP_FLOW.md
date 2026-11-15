@@ -151,11 +151,11 @@ flowchart TD
   W --> KEY{Key in OS keychain?}
   KEY -- no --> KS[/login: provider and key/]
   KS --> KC{Keychain available?}
-  KC -- no --> ENV[Use env var; no plaintext file unless --insecure-file-store]
+  KC -- no --> ENV[Clear error: no fallback; explains BLAME_API_KEY]
   KC -- yes --> SAVE[Save to keychain]
   KEY -- yes --> SCAN
   SAVE --> SCAN[Scan, propose AGENTS.md as diff]
-  ENV --> SCAN
+  ENV --> KS
   SCAN --> TASK[Type task]
   TASK --> GATE[Permission prompts as needed]
   GATE --> DIFF[Inline colored diff]
@@ -167,7 +167,7 @@ flowchart TD
 
 **Welcome box (first run).** Rounded border, wordmark in accent, working directory, current preset, two or three tips in muted text. Not a git repo: says so and offers to continue read-only or exit.
 
-**Provider setup.** `/login` or first-run prompt. Same rules as the extension, stored in the OS keychain (FR-KEY-1). On Linux without a secret service: env vars only, plaintext file only with `--insecure-file-store`. Anthropic OAuth login is not offered (FR-KEY-4). Invalid key or provider unreachable: message in the transcript, prompt stays, retry.
+**Provider setup.** `/login` or first-run prompt. Same rules as the extension, stored in the OS keychain (FR-KEY-1). Keychain missing or locked (on Linux, no Secret Service): a clear error with no fallback to a file or env var; the error tells the user to set `BLAME_API_KEY` (provider variables such as `OPENAI_API_KEY` are not read). No plaintext file store (TRD OQ-7). Anthropic OAuth login is not offered (FR-KEY-4). Invalid key or provider unreachable: message in the transcript, prompt stays, retry.
 
 **Preset cycling.** shift+tab cycles Manual, Guided, Autonomous; `/mode` does the same by name. Autonomous is skipped until opted in for this workspace; trying `/mode autonomous` before opt-in starts the opt-in explanation. Sandbox unavailable: refuses with the reason, preset unchanged. Footer shows the preset on the left in its trust color with the level label, key hints on the right.
 

@@ -1,6 +1,7 @@
 ---
-status: proposed
+status: accepted
 date: 2026-11-14
+accepted: 2026-11-15 (David merged PR #35)
 decision-makers: David Bustos Jr
 consulted: Davinci (Pi 1.5.2 RPC findings)
 informed: Atlas, Forge

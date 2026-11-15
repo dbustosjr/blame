@@ -6,7 +6,7 @@ Working rules for coding agents (and people) in the Blame repo. This file says h
 
 Blame is a vendor-neutral coding agent that owns its mistakes. It ships as a VS Code extension (VS Code, Cursor, Windsurf) and a terminal app, both built on the open-source Pi agent toolkit with the user's own model key, plus a learning record that turns each failure into a lesson and a regression test, and an independent reviewer (F24) for every agent PR. The stack is TypeScript on Node 22.19+, Python FastAPI, Postgres with pgvector on InsForge, Next.js for the website and GitHub Actions for CI and review.
 
-Status (November 14, 2026): the Phase 0 monorepo scaffold and CI have merged, and Phase 1 (Pi spike and core skeleton) is in progress. The docs below are on `main`.
+Status (November 15, 2026): Phase 0 and Phase 8a (static web pages) have merged. Phase 1 is in progress: the core session, sign-in policy and engine stdio protocol (ADR-0006, accepted) are on main, and wiring the extension and CLI to it is next. The docs below are on `main`.
 
 ## Read before you start
 
@@ -86,6 +86,7 @@ What works today:
 | Build | `pnpm build` |
 | Extension integration tests | `xvfb-run -a pnpm --filter blame test:e2e` on Linux (`vscode-test` from `@vscode/test-cli`) |
 | Design check | `npx impeccable@4.9.1 detect --github apps/web` (ignores in `.impeccable/config.json`) |
+| Real OS keychain test (opt-in, writes to this machine's keychain and cleans up) | `BLAME_KEYCHAIN_TEST=1 pnpm --filter blame-ai test`; on headless Linux run it under `dbus-run-session` with `gnome-keyring-daemon` started. Skipped with a printed reason otherwise |
 | Import boundary | `pnpm check:boundary` (only `packages/core` may import `@earendil-works/*`) |
 | Em and en dash check | `pnpm check:dashes` (Markdown tracked by git) |
 | Secret scan | runs in CI as `.github/workflows/secret-scan.yml` (gitleaks) on every PR and push to main |

@@ -13,7 +13,8 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "themes"
   ],
   "engines": {
     "node": ">=22.19.0"
@@ -21,7 +22,8 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "themes": "pnpm build && node dist/write-themes.js"
   },
   "devDependencies": {
     "@types/node": "24.19.2",

@@ -83,6 +83,7 @@ function makeHost(
       error: (m) => logs.push(`error ${m}`),
     },
     transcript: { append: (t) => transcript.push(t) },
+    notify: (m) => logs.push(`notify ${m}`),
     ...(opts.approvalTimeoutMs === undefined ? {} : { approvalTimeoutMs: opts.approvalTimeoutMs }),
   });
   return { host, logs, transcript, clients };

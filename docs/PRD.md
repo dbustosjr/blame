@@ -580,7 +580,7 @@ Built from the final logo: three dark blues, a lavender accent and white. Everyt
 | Foreground | #E8E6FF | |
 | Cursor | #B9C2FF | |
 | Selection | #22007C | |
-| Black | #04052E | #4A4878 |
+| Black | #04052E | #5B5986 |
 | Red | #FF6B6B | #FF8A8A |
 | Green | #3ECF8E | #6FE3AE |
 | Yellow | #F5B544 | #FFC95E |
@@ -588,6 +588,8 @@ Built from the final logo: three dark blues, a lavender accent and white. Everyt
 | Magenta | #B18CFF | #CDB4FF |
 | Cyan | #6ED3D3 | #8FE3E3 |
 | White | #E8E6FF | #FFFFFF |
+
+Bright black is #5B5986 so text in it stays readable (3.02:1 on the background). The original #4A4878 is kept only for decoration such as box borders. DESIGN.md is the source for these values.
 
 ### 9.3 Trust ramp
 

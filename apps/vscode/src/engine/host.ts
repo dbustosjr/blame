@@ -7,7 +7,11 @@ import type {
   InitParams,
   PolicyContext,
 } from "@blame-ai/core/engine-client";
-import { redactDeep } from "@blame-ai/core/engine-client";
+import {
+  createStreamRedactor,
+  redactDeep,
+  type StreamRedactor,
+} from "@blame-ai/core/engine-client";
 
 /** The part of BlameEngineClient the host uses, so tests can pass a fake. */
 export interface EngineClientLike {
@@ -48,6 +52,8 @@ export interface EngineHostDeps {
     error(message: string): void;
   };
   readonly transcript: { append(text: string): void };
+  /** Tells the user something they need to know now (an info message in VS Code). */
+  readonly notify: (message: string) => void;
   readonly approvalTimeoutMs?: number;
 }
 
@@ -57,7 +63,8 @@ export type EngineHostErrorCode =
   | "no_model"
   | "no_key"
   | "disposed"
-  | "start_failed";
+  | "start_failed"
+  | "settings_changed";
 
 export class EngineHostError extends Error {
   constructor(
@@ -74,12 +81,53 @@ export class EngineHostError extends Error {
  * Fails closed on approvals, redacts the key from everything it shows, and treats a crash as the
  * end of that engine (the next task starts a fresh one; resuming the session is not built yet).
  */
+export type EngineChange = "settings" | "key";
+
+const CHANGE_REASON: Record<EngineChange, string> = {
+  settings: "your Blame settings changed",
+  key: "your model key changed",
+};
+
+/** Redacts a byte stream that can split a key across chunks, then emits whole lines. */
+class LineRedactor {
+  private buffer = "";
+  constructor(
+    private readonly redactor: StreamRedactor,
+    private readonly emit: (line: string) => void,
+  ) {}
+  push(text: string): void {
+    this.buffer += this.redactor.push(text);
+    const lines = this.buffer.split("\n");
+    this.buffer = lines.pop() ?? "";
+    for (const line of lines) this.emitLine(line);
+  }
+  flush(): void {
+    this.buffer += this.redactor.flush();
+    const rest = this.buffer;
+    this.buffer = "";
+    for (const line of rest.split("\n")) this.emitLine(line);
+  }
+  private emitLine(line: string): void {
+    const clean = line.trimEnd();
+    if (clean !== "") this.emit(clean);
+  }
+}
+
 export class EngineHost {
   private client: EngineClientLike | undefined;
   private starting: Promise<EngineClientLike> | undefined;
+  /** Every key this host has sent, so an old key in a late log line is still redacted. */
   private secrets: string[] = [];
   private disposed = false;
   private prompting = 0;
+  /** Bumped on every settings or key change; an engine started under an older one is stale. */
+  private generation = 0;
+  private changes: Promise<void> = Promise.resolve();
+  /** Engines Blame stopped on purpose: their exit is not a crash. */
+  private readonly retired = new WeakSet<EngineClientLike>();
+  /** Engines stopped mid-task because of a change, with the reason for the task's error. */
+  private readonly interrupted = new WeakMap<EngineClientLike, string>();
+  private readonly flushers = new WeakMap<EngineClientLike, () => void>();
 
   constructor(private readonly deps: EngineHostDeps) {}
 
@@ -100,6 +148,13 @@ export class EngineHost {
     try {
       await client.prompt(text);
     } catch (error) {
+      const reason = this.interrupted.get(client);
+      if (reason !== undefined) {
+        throw new EngineHostError(
+          `The task stopped because ${reason}. Run it again to use the new settings.`,
+          "settings_changed",
+        );
+      }
       throw this.cleanError(error);
     } finally {
       this.prompting--;
@@ -120,13 +175,60 @@ export class EngineHost {
     return client.state();
   }
 
+  /**
+   * Call when any `blame.*` setting or a stored key changes. No engine: nothing to do. Idle engine:
+   * restart it so the new preset, model or key applies now. Running task: stop the task and the
+   * engine and tell the user; the next task starts fresh. An engine that is still starting checks
+   * the generation after init and restarts itself, so no engine keeps running under old settings.
+   */
+  settingsChanged(change: EngineChange): Promise<void> {
+    this.generation++;
+    const apply = () => this.applyChange(change);
+    this.changes = this.changes.then(apply, apply);
+    return this.changes;
+  }
+
+  private async applyChange(change: EngineChange): Promise<void> {
+    if (this.disposed) return;
+    const client = this.client;
+    if (client === undefined) return;
+    const reason = CHANGE_REASON[change];
+    // Detach first so nothing new reaches the old engine while it stops.
+    this.client = undefined;
+    if (this.prompting > 0) {
+      this.interrupted.set(client, reason);
+      await this.retire(client, true);
+      this.deps.log.info(`Stopped the running task and the engine because ${reason}.`);
+      this.deps.notify(
+        `Blame stopped the running task because ${reason}. Run it again to use the new settings.`,
+      );
+      return;
+    }
+    await this.retire(client, false);
+    this.deps.log.info(`Restarting the Blame engine because ${reason}.`);
+    try {
+      await this.ensureEngine();
+    } catch (error) {
+      this.deps.log.warn(
+        `The Blame engine did not restart (${this.cleanError(error).message}). The next task starts a new engine.`,
+      );
+    }
+  }
+
+  private async retire(client: EngineClientLike, abortFirst: boolean): Promise<void> {
+    this.retired.add(client);
+    if (abortFirst) await client.abort().catch(() => {});
+    await client.stop({ timeoutMs: 2_000 }).catch(() => {});
+    this.flushers.get(client)?.();
+  }
+
   /** Shuts the engine down (shutdown, then SIGTERM, then SIGKILL). Safe to call twice. */
   async dispose(): Promise<void> {
     this.disposed = true;
     const client = this.client ?? (await this.starting?.catch(() => undefined));
     this.client = undefined;
     this.starting = undefined;
-    await client?.stop({ timeoutMs: 2_000 }).catch(() => {});
+    if (client) await this.retire(client, false);
   }
 
   private ensureEngine(): Promise<EngineClientLike> {
@@ -141,6 +243,7 @@ export class EngineHost {
   }
 
   private async startEngine(): Promise<EngineClientLike> {
+    const generation = this.generation;
     const workspace = this.deps.getWorkspace();
     if (workspace === undefined) {
       throw new EngineHostError("Open a folder to run Blame on it.", "no_workspace");
@@ -162,7 +265,7 @@ export class EngineHost {
     if (apiKey === undefined || apiKey === "") {
       throw new EngineHostError(`Add a model key for ${settings.providerId}.`, "no_key");
     }
-    this.secrets = [apiKey];
+    if (!this.secrets.includes(apiKey)) this.secrets = [...this.secrets, apiKey];
 
     const client = this.deps.createClient({
       entry: this.deps.entry,
@@ -172,12 +275,25 @@ export class EngineHost {
         ? {}
         : { approvalTimeoutMs: this.deps.approvalTimeoutMs }),
     });
-    client.onStderr((text) => {
-      const line = this.redact(text).trimEnd();
-      if (line !== "") this.deps.log.warn(`engine: ${line}`);
+    // Stream redaction: a key split across two stderr chunks or two text deltas is still caught.
+    const stderr = new LineRedactor(createStreamRedactor(this.secrets), (line) =>
+      this.deps.log.warn(`engine: ${line}`),
+    );
+    const text = createStreamRedactor(this.secrets);
+    const flushText = () => {
+      const rest = text.flush();
+      if (rest !== "") this.deps.transcript.append(rest);
+    };
+    this.flushers.set(client, () => {
+      stderr.flush();
+      flushText();
     });
-    client.onEvent((event) => this.onEvent(event));
+    client.onStderr((chunk) => stderr.push(chunk));
+    client.onEvent((event) => this.onEvent(event, text, flushText));
     client.onExit((info) => {
+      stderr.flush();
+      flushText();
+      if (this.retired.has(client)) return;
       if (this.client !== client && this.starting === undefined) return;
       this.client = undefined;
       if (this.disposed) return;
@@ -186,8 +302,9 @@ export class EngineHost {
       );
     });
 
-    // Pi's fail-closed rule: shell always asks today. No opt-in and no sandbox are reported, so
-    // even Autonomous asks before every shell command (issue #26).
+    // No workspace opt-in and no sandbox exist in the extension yet, so both are reported false.
+    // Manual and Guided ask before every shell command. Autonomous needs both, so the policy
+    // blocks every tool call in it until the sandbox ships (R-AUTO-1, R-AUTO-4, issue #26).
     const policyContext: PolicyContext = {
       presetId: settings.presetId,
       earnedLevelId: "L1",
@@ -204,14 +321,20 @@ export class EngineHost {
         policyContext,
       });
     } catch (error) {
-      await client.stop({ timeoutMs: 2_000 }).catch(() => {});
+      await this.retire(client, false);
       const clean = this.cleanError(error);
       this.deps.log.error(`Blame engine failed to start: ${clean.message}`);
       throw new EngineHostError(clean.message, "start_failed");
     }
     if (this.disposed) {
-      await client.stop({ timeoutMs: 2_000 }).catch(() => {});
+      await this.retire(client, false);
       throw new EngineHostError("Blame is shutting down.", "disposed");
+    }
+    if (generation !== this.generation) {
+      // Settings or the key changed while this engine started: never keep it.
+      await this.retire(client, false);
+      this.deps.log.info("Settings changed while the engine started; starting it again.");
+      return this.startEngine();
     }
     this.client = client;
     this.deps.log.info(
@@ -237,11 +360,13 @@ export class EngineHost {
     }
   }
 
-  private onEvent(event: EngineStreamEvent): void {
+  private onEvent(event: EngineStreamEvent, text: StreamRedactor, flushText: () => void): void {
     switch (event.type) {
-      case "text_delta":
-        this.deps.transcript.append(this.redact(event.text));
+      case "text_delta": {
+        const safe = text.push(event.text);
+        if (safe !== "") this.deps.transcript.append(safe);
         break;
+      }
       case "tool_start":
         this.deps.log.info(`Tool ${event.toolName} started.`);
         break;
@@ -255,6 +380,7 @@ export class EngineHost {
         this.deps.log.error(`Engine error: ${this.redact(event.message)}`);
         break;
       case "settled":
+        flushText();
         this.deps.transcript.append("\n");
         break;
     }

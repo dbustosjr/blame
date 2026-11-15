@@ -56,6 +56,7 @@ export function activate(context: vscode.ExtensionContext): BlameExtensionApi {
       error: (m) => log.error(m),
     },
     transcript: { append: (t) => transcript.append(t) },
+    notify: (message) => void vscode.window.showInformationMessage(message),
   });
   activeHost = engine;
 
@@ -74,6 +75,8 @@ export function activate(context: vscode.ExtensionContext): BlameExtensionApi {
 
   const showError = async (error: unknown): Promise<void> => {
     const message = error instanceof Error ? error.message : String(error);
+    // The host already told the user why the task stopped.
+    if (error instanceof EngineHostError && error.code === "settings_changed") return;
     if (error instanceof EngineHostError && error.code === "no_key") {
       const pick = await vscode.window.showErrorMessage(message, "Add a model key");
       if (pick !== undefined) await setKey();
@@ -86,6 +89,13 @@ export function activate(context: vscode.ExtensionContext): BlameExtensionApi {
     transcript,
     log,
     { dispose: () => void engine.dispose() },
+    // A running engine never keeps old settings: restart it when idle, stop it mid-task.
+    vscode.workspace.onDidChangeConfiguration((event) => {
+      if (event.affectsConfiguration("blame")) void engine.settingsChanged("settings");
+    }),
+    context.secrets.onDidChange((event) => {
+      if (event.key.startsWith(KeyStore.PREFIX)) void engine.settingsChanged("key");
+    }),
     vscode.commands.registerCommand(OPEN_COMMAND, () => {
       transcript.show(true);
       return true;

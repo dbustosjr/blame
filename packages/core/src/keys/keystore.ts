@@ -5,8 +5,9 @@ import type { Credential, CredentialInfo, CredentialStore } from "@earendil-work
  *
  * Backends: the extension passes keys from VS Code SecretStorage over the RPC pipe and holds them
  * in an InMemoryKeyStore in the core child. The CLI backend is the OS keychain through
- * `@napi-rs/keyring` (macOS Keychain, Windows Credential Manager, Linux Secret Service), added in
- * the next slice. No backend ever writes a plaintext file.
+ * `@napi-rs/keyring` (macOS Keychain, Windows Credential Manager, Linux Secret Service):
+ * `KeychainKeyStore` in `apps/cli/src/keys/keychain.ts`. It lives in the CLI package so core and
+ * the extension bundle never depend on the native binary. No backend ever writes a plaintext file.
  */
 export interface KeyStore {
   get(providerId: string): Promise<string | undefined>;

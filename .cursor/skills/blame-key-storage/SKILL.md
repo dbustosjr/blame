@@ -31,7 +31,9 @@ The existing `apps/vscode/src/keyStore.ts` is the pattern: one secret per provid
 
 ## CLI: @napi-rs/keyring
 
-`@napi-rs/keyring` (MIT, maintained, 2.1.2 on npm in November 2026) binds the Rust `keyring` crate through N-API and ships prebuilt binaries as optional platform packages, so there is no compile step at install. Adding it is a new dependency: ask David, then pin it exactly.
+`@napi-rs/keyring` (MIT, maintained, 2.1.2 on npm in November 2026) binds the Rust `keyring` crate through N-API and ships prebuilt binaries as optional platform packages, so there is no compile step at install. David approved it on 2026-11-15 and it is pinned to 2.1.2 in `apps/cli` only. The Linux binaries statically link `libdbus` (`AFL-2.1 OR GPL-2.0-or-later`); each platform package ships `LICENSE.third-party.md`.
+
+The implementation is `KeychainKeyStore` in `apps/cli/src/keys/keychain.ts`. It is in the CLI package, not core, so core and the extension bundle never need the native binary, and it loads the module with a dynamic `import()` on first use. Accounts are `apiKey.<provider>` under service `blame`, plus `index.apiKey`, a JSON list of provider ids with no secrets, so `list()` never enumerates secret values. Errors are `KeychainError` with a fixed message and a `code`; the native error text and `cause` are dropped because a native message could echo a secret.
 
 ```ts
 import { AsyncEntry } from "@napi-rs/keyring";
@@ -53,7 +55,7 @@ Use `AsyncEntry` so keychain calls (which can show an OS prompt on macOS) never 
 
 Platform notes:
 
-- Linux: without the `linux.store` option, the binding tries Secret Service and silently falls back to the kernel keyutils keyring, which lives in memory and does not survive a reboot. FR-KEY-1 wants a clear outcome, so pin `secret-service`, catch the error, and fall back to environment variables. Never write a plaintext file unless the user passes `--insecure-file-store`, and then use mode 0600 and say so.
+- Linux: without the `linux.store` option, the binding tries Secret Service and silently falls back to the kernel keyutils keyring, which lives in memory and does not survive a reboot. FR-KEY-1 wants a clear outcome, so pin `secret-service` and turn the error into `keychain_unavailable`. The store itself never falls back: it does not read or write environment variables or files. The user can set the provider's own environment variable for Pi to read. `--insecure-file-store` is not built; adding it needs David's yes, and then it must use mode 0600 and say so.
 - Linux headless (SSH, CI, containers): there is usually no Secret Service. Environment variables are the expected path there. Document it in the install troubleshooting (APP_FLOW, "keychain missing on Linux").
 - Windows: Credential Manager generic credentials hold at most 2560 bytes (`CRED_MAX_CREDENTIAL_BLOB_SIZE`, 5 x 512). API keys fit. OAuth token sets (ChatGPT sign-in, Blame account refresh tokens) may not; store the refresh token and access token as separate entries, or keep only the refresh token and re-mint access tokens, and test with a realistic token length.
 - macOS: the first read from a new binary can show a Keychain access prompt. A rebuilt or re-signed binary can prompt again. That is expected, not a bug to work around.
@@ -63,7 +65,7 @@ Platform notes:
 
 Pi's `CredentialStore` (from `@earendil-works/pi-ai`) has `read`, `list`, `modify` and `delete`. `modify(providerId, fn)` is the only write path and must be serialized per provider, because Pi runs OAuth refresh inside it. Implement it in `packages/core/src/keys/` (ARCHITECTURE section 3):
 
-- Keychain-backed store for the CLI, keyed the same way as above. Serialize `modify` with a per-provider promise chain in process. Two `blame` processes can still race on refresh; note that limit in code and in the PR.
+- Keychain-backed store for the CLI: `keyStoreCredentials(new KeychainKeyStore())`, keyed the same way as above. Serialize `modify` with a per-provider promise chain in process. Two `blame` processes can still race on refresh; note that limit in code and in the PR.
 - In-memory store for the RPC child, filled from the keys the extension sends at session start. Nothing is persisted from the child; token refreshes are sent back to the extension to store in SecretStorage.
 - `list()` returns only provider ids and types, never secret values.
 - Wire it with `ModelRuntime.create({ credentials })`. For a one-off key, `modelRuntime.setRuntimeApiKey(provider, key)` keeps it in memory.
@@ -71,7 +73,7 @@ Pi's `CredentialStore` (from `@earendil-works/pi-ai`) has `read`, `list`, `modif
 ## Tests
 
 - No plaintext: after a session with a fake key, grep `~/.blame`, Blame's config dir and `~/.pi` for the key; expect no match (Phase 1 Verify, FR-KEY-2).
-- Linux without Secret Service: the CLI reports the problem and uses env vars; with no env var it refuses to save and names `--insecure-file-store`.
+- Linux without Secret Service: the store throws `keychain_unavailable` with next steps, names the provider env var as the user's alternative, and writes nothing (`apps/cli/test/keychain.test.ts`). The real keychain round trip is `apps/cli/test/keychain.real.test.ts`, opt-in with `BLAME_KEYCHAIN_TEST=1`.
 - Windows: storing a value over 2560 bytes fails with a clear message, not a crash.
 - Revoke: every Blame secret is gone from SecretStorage and the keychain, and the output lists each one.
 - Redaction: a fake key placed in a tool result never reaches model context or logs (T-02).
