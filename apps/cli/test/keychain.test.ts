@@ -121,7 +121,8 @@ describe("KeychainKeyStore when the keychain is missing or locked", () => {
     );
     expect(error).toBeInstanceOf(KeychainError);
     expect(error).toMatchObject({ code: "keychain_unavailable" });
-    expect((error as Error).message).toContain("OPENAI_API_KEY");
+    expect((error as Error).message).toContain("BLAME_API_KEY");
+    expect((error as Error).message).not.toContain("OPENAI_API_KEY");
   });
 
   it("reports headless Linux with no Secret Service as keychain_unavailable", async () => {
