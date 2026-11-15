@@ -83,7 +83,7 @@ function unavailableMessage(platform: NodeJS.Platform): string {
         : platform === "win32"
           ? "On Windows the blame CLI uses Credential Manager."
           : `The blame CLI has no keychain support on ${platform}.`;
-  return `Blame could not reach the OS keychain. ${where} Start or unlock a keychain and try again, or set your provider's API key environment variable for this shell instead (for example OPENAI_API_KEY). ${NO_PLAINTEXT}`;
+  return `Blame could not reach the OS keychain. ${where} Start or unlock a keychain and try again, or set BLAME_API_KEY for this shell instead. ${NO_PLAINTEXT}`;
 }
 
 const LOCKED =
