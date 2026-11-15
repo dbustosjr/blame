@@ -1,6 +1,6 @@
 import { type ChildProcessWithoutNullStreams, spawn, spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { APPROVAL_TIMEOUT_MS } from "../session/session.js";
+import { APPROVAL_TIMEOUT_MS } from "../session/constants.js";
 import { attachJsonlReader, DEFAULT_MAX_LINE_LENGTH, serializeJsonLine } from "./framing.js";
 import {
   BLAME_PROTOCOL_VERSION,
@@ -116,6 +116,7 @@ export class BlameEngineClient {
   private readonly eventListeners = new Set<(event: EngineStreamEvent) => void>();
   private readonly exitListeners = new Set<(info: EngineExitInfo) => void>();
   private readonly protocolErrorListeners = new Set<(error: ProtocolError) => void>();
+  private readonly stderrListeners = new Set<(text: string) => void>();
   private seq = 0;
   private stderrText = "";
   private exitError: EngineExitedError | undefined;
@@ -146,6 +147,12 @@ export class BlameEngineClient {
   onProtocolError(listener: (error: ProtocolError) => void): () => void {
     this.protocolErrorListeners.add(listener);
     return () => this.protocolErrorListeners.delete(listener);
+  }
+
+  /** Engine stderr as it arrives, raw. Hosts must redact before showing it. */
+  onStderr(listener: (text: string) => void): () => void {
+    this.stderrListeners.add(listener);
+    return () => this.stderrListeners.delete(listener);
   }
 
   /** Spawns the engine and waits for its `ready` frame. */
@@ -192,7 +199,15 @@ export class BlameEngineClient {
     );
     this.child = child;
     child.stderr.on("data", (chunk: Buffer) => {
-      this.stderrText = (this.stderrText + chunk.toString("utf8")).slice(-STDERR_LIMIT);
+      const text = chunk.toString("utf8");
+      this.stderrText = (this.stderrText + text).slice(-STDERR_LIMIT);
+      for (const listener of this.stderrListeners) {
+        try {
+          listener(text);
+        } catch {
+          // A failing listener must not break the engine stream.
+        }
+      }
     });
     child.stdin.on("error", () => {
       // EPIPE after a crash; the exit handler reports it.

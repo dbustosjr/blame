@@ -235,6 +235,15 @@ describe("BlameEngineClient with the stdio engine", () => {
     await expect(c.state()).rejects.toBeInstanceOf(EngineExitedError);
   });
 
+  it("streams engine stderr to onStderr listeners as it arrives", async () => {
+    const c = start([], () => false, { mode: "stderr_banner" });
+    const chunks: string[] = [];
+    c.onStderr((text) => chunks.push(text));
+    await c.start();
+    await vi.waitFor(() => expect(chunks.join("")).toContain("faux engine stderr banner"));
+    expect(c.stderr).toContain("faux engine stderr banner");
+  });
+
   it("shuts down cleanly", async () => {
     const c = start([], () => false);
     await init(c);
