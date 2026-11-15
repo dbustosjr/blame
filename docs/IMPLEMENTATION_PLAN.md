@@ -82,7 +82,7 @@ Verify:
 
 Progress (November 15, 2026):
 - Task 1: the session and in-memory key store are done (PR #20). The CLI keychain backend (`@napi-rs/keyring`) was approved by David on 2026-11-15 and is next.
-- Task 2: Anthropic OAuth is removed and only ChatGPT sign-in is allowed (PR #39). Saving ChatGPT tokens (on the keychain backend), the sign-in screen and `/login` are still to do.
+- Task 2: Anthropic OAuth is removed and only ChatGPT sign-in is allowed (PR #39). The sign-in screen and `/login` are still to do. Saving ChatGPT sign-in tokens waits on a separate yes from David (his keychain approval covers API keys only).
 - Task 3: done with Blame's own stdio protocol instead of Pi's RPC mode (PR #35, ADR-0006 accepted), including fail-closed approvals, an environment allowlist, output redaction and a capped audit log (issue #38). A second gate layer and refuse-to-start on a failed gate load landed in PRs #40 and #41.
 - Tasks 4 and 5: not started.
 - Next: wire the protocol into the extension stub and the CLI, which completes the Phase 1 deliverable.
