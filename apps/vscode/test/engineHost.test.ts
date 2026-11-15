@@ -74,6 +74,7 @@ function setup(overrides: Partial<EngineHostDeps> = {}) {
   const clients: FakeClient[] = [];
   const logs: string[] = [];
   const transcript: string[] = [];
+  const notices: string[] = [];
   const deps: EngineHostDeps = {
     entry: "/ext/dist/engine.mjs",
     configDir: "/global/blame",
@@ -96,9 +97,10 @@ function setup(overrides: Partial<EngineHostDeps> = {}) {
       error: (m) => logs.push(`error ${m}`),
     },
     transcript: { append: (t) => transcript.push(t) },
+    notify: (m) => notices.push(m),
     ...overrides,
   };
-  return { host: new EngineHost(deps), clients, logs, transcript, deps };
+  return { host: new EngineHost(deps), clients, logs, transcript, notices, deps };
 }
 
 const approvalReq: ApprovalPrompt = {
@@ -136,7 +138,7 @@ describe("EngineHost", () => {
     expect(clients).toHaveLength(1);
   });
 
-  it("never auto-allows shell: Autonomous still runs with no opt-in and no sandbox (issue #26)", async () => {
+  it("reports no opt-in and no sandbox, so the policy blocks every tool call in Autonomous (issue #26)", async () => {
     const { host, clients } = setup({
       getSettings: () => ({ providerId: "anthropic", modelId: "m", presetId: "autonomous" }),
     });
@@ -283,5 +285,151 @@ describe("EngineHost", () => {
     expect(String(err)).not.toContain(FAKE_KEY);
     expect(clients[0]?.calls).toContain("stop");
     expect(logs.join("\n")).not.toContain(FAKE_KEY);
+  });
+});
+
+describe("EngineHost redaction across chunks", () => {
+  it("never logs a key split across two stderr chunks, and flushes the last line at exit", async () => {
+    const { host, clients, logs } = setup();
+    await host.prompt("x");
+    const c = clients[0] as FakeClient;
+    c.writeStderr(`boot ok\nkey=${FAKE_KEY.slice(0, 7)}`);
+    c.writeStderr(`${FAKE_KEY.slice(7)} end\npartial tail`);
+    const joined = () => logs.join("\n");
+    expect(joined()).toContain("engine: boot ok");
+    expect(joined()).toContain("engine: key=[redacted] end");
+    expect(joined()).not.toContain(FAKE_KEY);
+    expect(joined()).not.toContain(FAKE_KEY.slice(0, 7));
+    expect(joined()).not.toContain("partial tail");
+    c.crash({ code: 1, signal: null });
+    expect(joined()).toContain("engine: partial tail");
+  });
+
+  it("never shows a key split across two text deltas in the transcript", async () => {
+    const { host, clients, transcript } = setup();
+    const done = host.prompt("x");
+    await vi.waitFor(() => expect(clients[0]?.calls).toContain("init"));
+    const c = clients[0] as FakeClient;
+    c.emit({ type: "text_delta", text: `a ${FAKE_KEY.slice(0, 9)}` });
+    c.emit({ type: "text_delta", text: `${FAKE_KEY.slice(9)} b` });
+    c.emit({ type: "settled" } as EngineStreamEvent);
+    await done;
+    expect(transcript.join("")).not.toContain(FAKE_KEY);
+    expect(transcript.join("")).toContain("a [redacted] b");
+  });
+});
+
+describe("EngineHost settings and key changes", () => {
+  type Settings = ReturnType<EngineHostDeps["getSettings"]>;
+  function mutable(initial: Settings, key = FAKE_KEY) {
+    const state = { settings: initial, key };
+    const ctx = setup({
+      getSettings: () => state.settings,
+      getApiKey: async () => state.key,
+    });
+    return { ...ctx, state };
+  }
+  const guided: Settings = { providerId: "anthropic", modelId: "m", presetId: "guided" };
+
+  it("does nothing when no engine is running", async () => {
+    const { host, clients } = mutable(guided);
+    await host.settingsChanged("settings");
+    expect(clients).toHaveLength(0);
+  });
+
+  it("restarts an idle engine so a new preset applies", async () => {
+    const { host, clients, state, notices } = mutable({ ...guided, presetId: "autonomous" });
+    await host.prompt("x");
+    state.settings = { ...guided, presetId: "manual" };
+    await host.settingsChanged("settings");
+    expect(clients).toHaveLength(2);
+    expect(clients[0]?.calls.at(-1)).toBe("stop");
+    expect(clients[1]?.initParams?.policyContext.presetId).toBe("manual");
+    expect(host.running).toBe(true);
+    expect(notices).toEqual([]);
+    await host.prompt("y");
+    expect(clients[1]?.calls).toContain("prompt:y");
+    expect(clients[0]?.calls).not.toContain("prompt:y");
+  });
+
+  it("restarts with the new key when the stored key changes, and redacts both keys", async () => {
+    const newKey = ["sk", "blame", "test", "second", "fake"].join("-");
+    const { host, clients, state, logs } = mutable(guided);
+    await host.prompt("x");
+    state.key = newKey;
+    await host.settingsChanged("key");
+    expect(clients[1]?.initParams?.apiKey).toBe(newKey);
+    (clients[1] as FakeClient).writeStderr(`${FAKE_KEY} ${newKey}\n`);
+    expect(logs.join("\n")).not.toContain(FAKE_KEY);
+    expect(logs.join("\n")).not.toContain(newKey);
+    expect(logs.join("\n")).not.toMatch(/error Blame engine exited/);
+  });
+
+  it("stops a running task and the engine, tells the user why, and the next run starts fresh", async () => {
+    const { host, clients, state, notices } = mutable(guided);
+    await host.prompt("warm up");
+    const c = clients[0] as FakeClient;
+    let reject: (e: Error) => void = () => {};
+    c.promptImpl = () => new Promise<void>((_r, j) => (reject = j));
+    const origStop = c.stop.bind(c);
+    c.stop = async () => {
+      await origStop();
+      reject(new Error("engine stopped"));
+    };
+    const running = host.prompt("long task");
+    await vi.waitFor(() => expect(host.busy).toBe(true));
+    state.settings = { ...guided, presetId: "manual" };
+    await host.settingsChanged("settings");
+    expect(c.calls).toContain("abort");
+    expect(c.calls.at(-1)).toBe("stop");
+    expect(host.running).toBe(false);
+    expect(clients).toHaveLength(1);
+    expect(notices).toHaveLength(1);
+    expect(notices[0]).toMatch(/stopped the running task/i);
+    await expect(running).rejects.toMatchObject({ code: "settings_changed" });
+    await host.prompt("next");
+    expect(clients).toHaveLength(2);
+    expect(clients[1]?.initParams?.policyContext.presetId).toBe("manual");
+  });
+
+  it("never keeps an engine that was starting under the old preset", async () => {
+    let release: () => void = () => {};
+    const state = { settings: { ...guided, presetId: "autonomous" } as Settings };
+    const clients: FakeClient[] = [];
+    const { host } = setup({
+      getSettings: () => state.settings,
+      createClient: (options) => {
+        const c = new FakeClient(options);
+        if (clients.length === 0) {
+          c.init = async (params) => {
+            c.calls.push("init");
+            c.initParams = params;
+            await new Promise<void>((r) => (release = r));
+          };
+        }
+        clients.push(c);
+        return c;
+      },
+    });
+    const first = host.prompt("x");
+    await vi.waitFor(() => expect(clients[0]?.calls).toContain("init"));
+    state.settings = { ...guided, presetId: "manual" };
+    const changed = host.settingsChanged("settings");
+    release();
+    await Promise.all([first, changed]);
+    expect(clients[0]?.calls).toContain("stop");
+    expect(clients[0]?.calls).not.toContain("prompt:x");
+    expect(clients[1]?.initParams?.policyContext.presetId).toBe("manual");
+    expect(clients[1]?.calls).toContain("prompt:x");
+  });
+
+  it("logs, and does not throw, when the restart cannot start (for example the key was removed)", async () => {
+    const { host, clients, state, logs } = mutable(guided);
+    await host.prompt("x");
+    state.key = "";
+    await expect(host.settingsChanged("key")).resolves.toBeUndefined();
+    expect(host.running).toBe(false);
+    expect(clients[0]?.calls.at(-1)).toBe("stop");
+    expect(logs.join("\n")).toMatch(/next task/i);
   });
 });

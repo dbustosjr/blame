@@ -13,6 +13,9 @@ const PREFIX = "blame.apiKey.";
 export type SecretStore = Pick<SecretStorage, "get" | "store" | "delete">;
 
 export class KeyStore {
+  /** Prefix of every key secret, for filtering `SecretStorage.onDidChange`. */
+  static readonly PREFIX = PREFIX;
+
   constructor(private readonly secrets: SecretStore) {}
 
   static secretName(provider: string): string {
