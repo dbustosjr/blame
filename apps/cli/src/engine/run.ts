@@ -72,7 +72,7 @@ export async function runTask(options: RunTaskOptions): Promise<number> {
   const apiKey = await options.keySource.get(options.providerId);
   if (apiKey === undefined) {
     fail(
-      `No model key for ${options.providerId}. Set BLAME_API_KEY or run in a terminal to be asked.`,
+      `No model key for ${options.providerId}. Set BLAME_API_KEY for this shell, or run in a terminal to be asked.`,
     );
     return 1;
   }

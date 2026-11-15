@@ -1,34 +1,39 @@
 import { createInterface } from "node:readline";
-import type { ApprovalPrompt } from "@blame-ai/core/engine-client";
+import { type ApprovalPrompt, riskLabel } from "@blame-ai/core/engine-client";
 import { stripAnsi, type Theme } from "../theme.js";
+import { wrapField, wrapText } from "../wrap.js";
 
 const BORDERS = {
   unicode: { tl: "\u256D", tr: "\u256E", bl: "\u2570", br: "\u256F", h: "\u2500", v: "\u2502" },
   ascii: { tl: "+", tr: "+", bl: "+", br: "+", h: "-", v: "|" },
 } as const;
 
+/** Below this width the box drops its border and prints plain lines (DESIGN.md, Davinci #49). */
+export const MIN_BOX_COLUMNS = 40;
+
 /**
  * DESIGN.md permission prompt: a bordered box (status.warning, approval pending) naming the
- * exact files and the reason, with numbered choices. Deny is the default. "Allow for this
- * session" is not offered: protocol v1 has one approval per action.
+ * exact files and the reason, with numbered choices. Deny is the default. Paths and the reason
+ * wrap onto more lines; nothing is clipped. The risk is a plain-word label from core, never a raw
+ * id. "Allow for this session" is not offered: protocol v1 has one approval per action.
  */
 export function renderApprovalBox(req: ApprovalPrompt, theme: Theme, columns = 80): string {
-  const b = theme.unicode ? BORDERS.unicode : BORDERS.ascii;
-  const width = Math.max(40, Math.min(columns, 80));
-  const inner = width - 4;
-  const clip = (text: string) => (text.length > inner ? `${text.slice(0, inner - 3)}...` : text);
+  const bordered = columns >= MIN_BOX_COLUMNS;
+  const width = bordered ? Math.min(columns, 80) : Math.max(1, columns);
+  const inner = bordered ? width - 4 : width;
+  const hint = (lines: string[]) => lines.map((l) => theme.role("hint", l));
+  const risk = riskLabel(req.riskyClass);
   const lines = [
     `Blame wants to run ${theme.token("text.primary", req.toolName, { bold: true })}`,
-    ...req.paths.map((p) => `${theme.role("hint", "file:")} ${clip(p)}`),
-    clip(req.reason),
-    theme.role(
-      "hint",
-      clip(`capability: ${req.capability}${req.riskyClass ? `, risk: ${req.riskyClass}` : ""}`),
-    ),
+    ...req.paths.flatMap((p) => wrapField("file:", p, inner)),
+    ...wrapText(req.reason, inner),
+    ...(risk === undefined ? [] : hint(wrapField("risk:", risk, inner))),
     "",
     "1. Allow once",
     `2. Deny ${theme.role("hint", "(default)")}`,
   ];
+  if (!bordered) return `${lines.join("\n")}\n`;
+  const b = theme.unicode ? BORDERS.unicode : BORDERS.ascii;
   const border = (s: string) => theme.token("status.warning", s);
   const out = [border(`${b.tl}${b.h.repeat(width - 2)}${b.tr}`)];
   for (const line of lines) {
@@ -71,11 +76,18 @@ export function createTerminalApprover(
       output.write(renderApprovalBox(req, theme, output.columns ?? 80));
       const rl = createInterface({ input, output, terminal: true });
       let settled = false;
-      const finish = (approved: boolean, note?: string) => {
+      // The user's own deny is a choice, not an error: text.secondary. Timeouts and Ctrl-C
+      // cancels stay status.error.
+      const finish = (approved: boolean, note?: string, byUser = false) => {
         if (settled) return;
         settled = true;
         signal.removeEventListener("abort", onAbort);
-        if (note) output.write(`\n${theme.token("status.error", "Denied:")} ${note}\n`);
+        if (note) {
+          const mark = byUser
+            ? theme.token("text.secondary", "Denied:")
+            : theme.token("status.error", "Denied:");
+          output.write(`\n${mark} ${note}\n`);
+        }
         rl.close();
         resolve(approved);
       };
@@ -85,7 +97,7 @@ export function createTerminalApprover(
       rl.on("close", () => finish(false));
       rl.question("Choose 1 or 2 [2]: ", (answer) => {
         const approved = YES.has(answer.trim().toLowerCase()) && !signal.aborted;
-        finish(approved, approved ? undefined : `${req.toolName} was not run.`);
+        finish(approved, approved ? undefined : `${req.toolName} was not run.`, true);
       });
     });
 }

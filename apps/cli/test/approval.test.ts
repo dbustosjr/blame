@@ -44,6 +44,45 @@ describe("terminal approval box (DESIGN.md permission prompt)", () => {
     expect(box).toContain("\u001b[38;2;245;181;68m");
   });
 
+  it("wraps a long path onto more lines instead of clipping it", () => {
+    const long =
+      "packages/very/deeply/nested/directory/structure/that/goes/on/and/on/login-handler.ts";
+    const box = stripAnsi(renderApprovalBox({ ...write, paths: [long] }, theme, 60));
+    expect(box).not.toContain("...");
+    expect(box).toContain("login-handler.ts");
+    const lines = box.trimEnd().split("\n");
+    expect(lines.every((l) => l.length === 60)).toBe(true);
+    const joined = lines.map((l) => l.slice(2, -2).trim()).join("");
+    expect(joined).toContain(long);
+  });
+
+  it("wraps a long reason too", () => {
+    const reason = "This is a long reason that will not fit on one line of the box at all, really";
+    const box = stripAnsi(renderApprovalBox({ ...write, reason }, theme, 40));
+    expect(box).not.toContain("...");
+    expect(box.replace(/[\u2502|\s]+/g, " ")).toContain(reason);
+  });
+
+  it("shows a plain-word risk label from core, never the raw id", () => {
+    const box = stripAnsi(renderApprovalBox(write, theme));
+    expect(box).toContain("risk: protected area (safe zone)");
+    expect(box).not.toContain("safe_zone");
+    const secret = stripAnsi(renderApprovalBox({ ...write, riskyClass: "secret_access" }, theme));
+    expect(secret).toContain("risk: file that may hold secrets");
+    const unknown = stripAnsi(renderApprovalBox({ ...write, riskyClass: "new_thing" }, theme));
+    expect(unknown).toContain("risk: needs your approval");
+    expect(unknown).not.toContain("new_thing");
+  });
+
+  it("drops the border below 40 columns and still wraps to the width", () => {
+    const box = stripAnsi(renderApprovalBox(write, theme, 30));
+    expect(box).not.toMatch(/[\u256D\u256E\u2570\u256F\u2502]/);
+    const lines = box.trimEnd().split("\n");
+    expect(lines.every((l) => l.length <= 30)).toBe(true);
+    expect(box).toContain("auth/login.ts");
+    expect(box).toContain("1. Allow once");
+  });
+
   it("falls back to ASCII borders", () => {
     const box = renderApprovalBox(write, createTheme("none", false));
     expect(box.split("\n")[0]).toMatch(/^\+-+\+$/);
@@ -76,6 +115,26 @@ describe("terminal approver fails closed", () => {
     const ask = createTerminalApprover({ input: t.input, output: t.output, theme });
     expect(await ask(write, new AbortController().signal)).toBe(false);
     expect(t.shown()).toMatch(/denied: no terminal/i);
+  });
+
+  it("shows the user's own deny in secondary text, not error red", async () => {
+    const t = tty();
+    const ask = createTerminalApprover({
+      input: t.input,
+      output: t.output,
+      theme: createTheme("truecolor"),
+    });
+    let raw = "";
+    t.output.on("data", (c: Buffer) => {
+      raw += c.toString("utf8");
+    });
+    const result = ask(write, new AbortController().signal);
+    t.input.write("2\n");
+    expect(await result).toBe(false);
+    const deniedAt = raw.lastIndexOf("Denied:");
+    const before = raw.slice(Math.max(0, deniedAt - 30), deniedAt);
+    expect(before).not.toContain("\u001b[38;2;255;107;107m");
+    expect(before).toContain("\u001b[38;2;169;167;204m");
   });
 
   it("denies on Ctrl-C", async () => {

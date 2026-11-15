@@ -142,6 +142,9 @@ describe("runTask with real engine processes", () => {
     const t = setup({ keySource: keys(null) });
     expect(await t.run()).toBe(1);
     expect(t.err()).toMatch(/no model key/i);
+    // Same rule as the keychain error (#51): the only env var it may name is BLAME_API_KEY.
+    const envNames = new Set(t.err().match(/\b[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+\b/g) ?? []);
+    expect([...envNames]).toEqual(["BLAME_API_KEY"]);
     expect(t.clients).toHaveLength(0);
   });
 
