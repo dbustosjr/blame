@@ -35,14 +35,38 @@ describe("KeyStore on SecretStorage", () => {
 });
 
 describe("manifest", () => {
-  it("activates on the Blame: Open command and targets a current VS Code", async () => {
+  it("activates on Blame's commands and targets a current VS Code", async () => {
     const { default: manifest } = await import("../package.json", { with: { type: "json" } });
-    expect(manifest.activationEvents).toEqual(["onCommand:blame.open"]);
+    expect(manifest.activationEvents).toEqual([
+      "onCommand:blame.open",
+      "onCommand:blame.runTask",
+      "onCommand:blame.stop",
+      "onCommand:blame.setModelKey",
+    ]);
     expect(manifest.contributes.commands).toEqual([
       { command: "blame.open", title: "Open", category: "Blame" },
+      { command: "blame.runTask", title: "Run Task", category: "Blame" },
+      { command: "blame.stop", title: "Stop Task", category: "Blame" },
+      { command: "blame.setModelKey", title: "Set Model Key", category: "Blame" },
     ]);
     expect(manifest.main).toBe("./dist/extension.js");
     expect(manifest.engines.vscode).toMatch(/^\^1\.\d+\.0$/);
     expect(manifest.devDependencies["@types/vscode"]).toBe(manifest.engines.vscode.slice(1));
+  });
+
+  it("keeps model and preset settings out of workspace control (a repo cannot pick them)", async () => {
+    const { default: manifest } = await import("../package.json", { with: { type: "json" } });
+    const props = manifest.contributes.configuration.properties as Record<
+      string,
+      { scope?: string; default?: unknown; enum?: string[] }
+    >;
+    expect(Object.keys(props).sort()).toEqual([
+      "blame.model.id",
+      "blame.model.provider",
+      "blame.preset",
+    ]);
+    for (const prop of Object.values(props)) expect(prop.scope).toBe("application");
+    expect(props["blame.preset"]?.enum).toEqual(["manual", "guided", "autonomous"]);
+    expect(props["blame.preset"]?.default).toBe("guided");
   });
 });

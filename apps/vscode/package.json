@@ -20,7 +20,10 @@
   ],
   "main": "./dist/extension.js",
   "activationEvents": [
-    "onCommand:blame.open"
+    "onCommand:blame.open",
+    "onCommand:blame.runTask",
+    "onCommand:blame.stop",
+    "onCommand:blame.setModelKey"
   ],
   "contributes": {
     "commands": [
@@ -28,8 +31,51 @@
         "command": "blame.open",
         "title": "Open",
         "category": "Blame"
+      },
+      {
+        "command": "blame.runTask",
+        "title": "Run Task",
+        "category": "Blame"
+      },
+      {
+        "command": "blame.stop",
+        "title": "Stop Task",
+        "category": "Blame"
+      },
+      {
+        "command": "blame.setModelKey",
+        "title": "Set Model Key",
+        "category": "Blame"
       }
-    ]
+    ],
+    "configuration": {
+      "title": "Blame",
+      "properties": {
+        "blame.model.provider": {
+          "type": "string",
+          "default": "anthropic",
+          "scope": "application",
+          "markdownDescription": "Model provider id, for example `anthropic` or `openai`. Your key for it is kept in VS Code's secret storage."
+        },
+        "blame.model.id": {
+          "type": "string",
+          "default": "",
+          "scope": "application",
+          "markdownDescription": "Model id at that provider, for example `claude-sonnet-4-5`."
+        },
+        "blame.preset": {
+          "type": "string",
+          "enum": [
+            "manual",
+            "guided",
+            "autonomous"
+          ],
+          "default": "guided",
+          "scope": "application",
+          "markdownDescription": "Autonomy preset. Shell commands always ask, in every preset, until the sandbox ships."
+        }
+      }
+    }
   },
   "scripts": {
     "build": "node esbuild.mjs",
