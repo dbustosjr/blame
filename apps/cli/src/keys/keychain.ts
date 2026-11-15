@@ -1,4 +1,11 @@
-import { InMemoryKeyStore, type KeyStore } from "@blame-ai/core";
+import { randomBytes } from "node:crypto";
+import {
+  assertOAuthAllowed,
+  InMemoryKeyStore,
+  type KeyStore,
+  type OAuthTokenStore,
+  type OAuthTokens,
+} from "@blame-ai/core";
 
 /**
  * The CLI's BYOK key store on the OS keychain through `@napi-rs/keyring` (macOS Keychain, Windows
@@ -37,6 +44,19 @@ export const KEYCHAIN_INDEX_ACCOUNT = "index.apiKey";
 
 const PROVIDER_ID = /^[a-z0-9][a-z0-9-]{0,63}$/;
 
+/** Account that holds the JSON list of provider ids with stored OAuth tokens. Never a secret. */
+export const KEYCHAIN_OAUTH_INDEX_ACCOUNT = "index.oauth";
+
+/**
+ * OAuth token sets are split into entries of at most this many UTF-16 code units, so each one fits
+ * Windows Credential Manager (2000 bytes as UTF-16). ChatGPT access tokens are JWTs that can pass
+ * the 2560-byte limit on their own. The serialized JSON is pure ASCII, so no chunk splits a
+ * character.
+ */
+export const OAUTH_CHUNK_CHARS = 1000;
+const OAUTH_MAX_CHUNKS = 32;
+const OAUTH_GENERATION = /^[0-9a-f]{16}$/;
+
 /** Windows Credential Manager blob limit (CRED_MAX_CREDENTIAL_BLOB_SIZE). keyring stores UTF-16. */
 export const WINDOWS_MAX_SECRET_BYTES = 2560;
 
@@ -45,6 +65,7 @@ export type KeychainErrorCode =
   | "keychain_locked"
   | "too_long"
   | "invalid"
+  | "corrupt"
   | "keychain_error";
 
 export type KeychainOperation = "get" | "set" | "delete" | "list" | "load";
@@ -62,6 +83,12 @@ export class KeychainError extends Error {
     super(message);
     this.name = "KeychainError";
   }
+}
+
+/** The manifest account for a provider's OAuth tokens: `oauth.<provider>`. Holds no secret. */
+export function oauthManifestAccount(providerId: string): string {
+  keychainAccount(providerId);
+  return `oauth.${providerId}`;
 }
 
 /** The keychain account for a provider's API key: `apiKey.<provider>`, like the extension. */
@@ -135,7 +162,7 @@ export interface KeychainKeyStoreOptions {
 const loadNapiKeyring = async (): Promise<KeyringModule> =>
   (await import("@napi-rs/keyring")) as unknown as KeyringModule;
 
-export class KeychainKeyStore implements KeyStore {
+export class KeychainKeyStore implements KeyStore, OAuthTokenStore {
   readonly #load: () => Promise<KeyringModule>;
   readonly #platform: NodeJS.Platform;
   #module: Promise<KeyringModule> | undefined;
@@ -193,8 +220,128 @@ export class KeychainKeyStore implements KeyStore {
     return this.#call("list", () => this.#readIndex());
   }
 
+  /**
+   * ChatGPT sign-in tokens (FR-KEY-3), only for providers on the auth policy's OAuth allowlist.
+   * Layout under service `blame`: `oauth.<provider>` is a manifest `{"v":1,"gen":...,"chunks":n}`
+   * with no secret, and `oauth.<provider>.<gen>.<i>` hold the token JSON in chunks. A refresh writes
+   * a new generation, switches the manifest, then deletes the old chunks, so a crash mid-write
+   * leaves the previous sign-in readable.
+   */
+  async getOAuth(providerId: string): Promise<OAuthTokens | undefined> {
+    const manifestAccount = oauthManifestAccount(providerId);
+    try {
+      assertOAuthAllowed(providerId);
+    } catch {
+      return undefined;
+    }
+    return this.#call("get", async () => {
+      const manifest = await this.#readManifest(manifestAccount);
+      if (manifest === undefined) return undefined;
+      let json = "";
+      for (let i = 0; i < manifest.chunks; i++) {
+        const part = await (
+          await this.#entry(`${manifestAccount}.${manifest.gen}.${i}`)
+        ).getPassword();
+        if (part === null) throw corrupt("get");
+        json += part;
+      }
+      const tokens = parseTokens(json);
+      if (tokens === undefined) throw corrupt("get");
+      return tokens;
+    });
+  }
+
+  async setOAuth(providerId: string, tokens: OAuthTokens): Promise<void> {
+    const manifestAccount = oauthManifestAccount(providerId);
+    assertOAuthAllowed(providerId);
+    if (!isTokens(tokens)) {
+      throw new KeychainError("invalid", "set", "Sign-in tokens are incomplete; sign in again.");
+    }
+    const json = asciiJson(tokens);
+    const chunks: string[] = [];
+    for (let i = 0; i < json.length; i += OAUTH_CHUNK_CHARS) {
+      chunks.push(json.slice(i, i + OAUTH_CHUNK_CHARS));
+    }
+    if (chunks.length > OAUTH_MAX_CHUNKS) throw tooLong("set");
+    await this.#serialize(() =>
+      this.#call("set", async () => {
+        const previous = await this.#readManifest(manifestAccount).catch(() => undefined);
+        const gen = randomBytes(8).toString("hex");
+        for (const [i, chunk] of chunks.entries()) {
+          await (await this.#entry(`${manifestAccount}.${gen}.${i}`)).setPassword(chunk);
+        }
+        await (await this.#entry(manifestAccount)).setPassword(
+          JSON.stringify({ v: 1, gen, chunks: chunks.length }),
+        );
+        if (previous) await this.#deleteChunks(manifestAccount, previous);
+        const ids = await this.#readList(KEYCHAIN_OAUTH_INDEX_ACCOUNT);
+        if (!ids.includes(providerId)) {
+          await this.#writeList(KEYCHAIN_OAUTH_INDEX_ACCOUNT, [...ids, providerId]);
+        }
+      }),
+    );
+  }
+
+  /** Logout. Works on a damaged entry too. */
+  async deleteOAuth(providerId: string): Promise<void> {
+    const manifestAccount = oauthManifestAccount(providerId);
+    await this.#serialize(() =>
+      this.#call("delete", async () => {
+        const manifest = await this.#readManifest(manifestAccount).catch(() => undefined);
+        if (manifest) await this.#deleteChunks(manifestAccount, manifest);
+        await (await this.#entry(manifestAccount)).deletePassword();
+        const ids = await this.#readList(KEYCHAIN_OAUTH_INDEX_ACCOUNT);
+        if (ids.includes(providerId)) {
+          await this.#writeList(
+            KEYCHAIN_OAUTH_INDEX_ACCOUNT,
+            ids.filter((id) => id !== providerId),
+          );
+        }
+      }),
+    );
+  }
+
+  async listOAuth(): Promise<string[]> {
+    return this.#call("list", () => this.#readList(KEYCHAIN_OAUTH_INDEX_ACCOUNT));
+  }
+
+  async #readManifest(account: string): Promise<{ gen: string; chunks: number } | undefined> {
+    const raw = await (await this.#entry(account)).getPassword();
+    if (raw === null) return undefined;
+    try {
+      const m = JSON.parse(raw) as { v?: unknown; gen?: unknown; chunks?: unknown };
+      if (
+        m.v === 1 &&
+        typeof m.gen === "string" &&
+        OAUTH_GENERATION.test(m.gen) &&
+        Number.isInteger(m.chunks) &&
+        (m.chunks as number) > 0 &&
+        (m.chunks as number) <= OAUTH_MAX_CHUNKS
+      ) {
+        return { gen: m.gen, chunks: m.chunks as number };
+      }
+    } catch {
+      // Fall through.
+    }
+    throw corrupt("get");
+  }
+
+  async #deleteChunks(account: string, manifest: { gen: string; chunks: number }): Promise<void> {
+    for (let i = 0; i < manifest.chunks; i++) {
+      await (await this.#entry(`${account}.${manifest.gen}.${i}`)).deletePassword();
+    }
+  }
+
   async #readIndex(): Promise<string[]> {
-    const raw = await (await this.#entry(KEYCHAIN_INDEX_ACCOUNT)).getPassword();
+    return this.#readList(KEYCHAIN_INDEX_ACCOUNT);
+  }
+
+  async #writeIndex(ids: string[]): Promise<void> {
+    return this.#writeList(KEYCHAIN_INDEX_ACCOUNT, ids);
+  }
+
+  async #readList(account: string): Promise<string[]> {
+    const raw = await (await this.#entry(account)).getPassword();
     if (raw === null) return [];
     try {
       const parsed: unknown = JSON.parse(raw);
@@ -206,8 +353,8 @@ export class KeychainKeyStore implements KeyStore {
     }
   }
 
-  async #writeIndex(ids: string[]): Promise<void> {
-    const entry = await this.#entry(KEYCHAIN_INDEX_ACCOUNT);
+  async #writeList(account: string, ids: string[]): Promise<void> {
+    const entry = await this.#entry(account);
     if (ids.length === 0) await entry.deletePassword();
     else await entry.setPassword(JSON.stringify([...new Set(ids)].sort()));
   }
@@ -246,6 +393,44 @@ export class KeychainKeyStore implements KeyStore {
     this.#writes = next.catch(() => undefined);
     return next;
   }
+}
+
+function corrupt(operation: KeychainOperation): KeychainError {
+  return new KeychainError(
+    "corrupt",
+    operation,
+    "The saved ChatGPT sign-in in the OS keychain is damaged. Sign out and sign in again.",
+  );
+}
+
+function isTokens(x: unknown): x is OAuthTokens {
+  if (typeof x !== "object" || x === null) return false;
+  const t = x as Record<string, unknown>;
+  return (
+    typeof t.access === "string" &&
+    t.access.length > 0 &&
+    typeof t.refresh === "string" &&
+    t.refresh.length > 0 &&
+    typeof t.expires === "number" &&
+    Number.isFinite(t.expires)
+  );
+}
+
+function parseTokens(json: string): OAuthTokens | undefined {
+  try {
+    const parsed: unknown = JSON.parse(json);
+    return isTokens(parsed) ? parsed : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** JSON with every non-ASCII code unit escaped, so fixed-size chunks never split a character. */
+function asciiJson(value: unknown): string {
+  return JSON.stringify(value).replace(
+    /[\u0080-\uffff]/g,
+    (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, "0")}`,
+  );
 }
 
 export type CliKeyStoreBackend = "keychain" | "memory";
