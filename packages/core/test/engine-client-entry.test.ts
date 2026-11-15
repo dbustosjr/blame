@@ -36,4 +36,11 @@ describe("@blame-ai/core/engine-client", () => {
       default: "./dist/engine-client.js",
     });
   });
+
+  it("publishes the built engine entry for hosts that spawn it from core's dist", async () => {
+    const pkg = (await import("../package.json", { with: { type: "json" } })).default as {
+      exports: Record<string, unknown>;
+    };
+    expect(pkg.exports["./engine"]).toEqual({ default: "./dist/rpc/main.js" });
+  });
 });
