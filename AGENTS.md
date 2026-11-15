@@ -86,6 +86,7 @@ What works today:
 | Build | `pnpm build` |
 | Extension integration tests | `xvfb-run -a pnpm --filter blame test:e2e` on Linux (`vscode-test` from `@vscode/test-cli`) |
 | Design check | `npx impeccable@4.9.1 detect --github apps/web` (ignores in `.impeccable/config.json`) |
+| Real OS keychain test (opt-in, writes to this machine's keychain and cleans up) | `BLAME_KEYCHAIN_TEST=1 pnpm --filter blame-ai test`; on headless Linux run it under `dbus-run-session` with `gnome-keyring-daemon` started. Skipped with a printed reason otherwise |
 | Import boundary | `pnpm check:boundary` (only `packages/core` may import `@earendil-works/*`) |
 | Em and en dash check | `pnpm check:dashes` (Markdown tracked by git) |
 | Secret scan | runs in CI as `.github/workflows/secret-scan.yml` (gitleaks) on every PR and push to main |

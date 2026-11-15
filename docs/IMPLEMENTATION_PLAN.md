@@ -68,7 +68,7 @@ Verify:
 ## Phase 1: Pi spike and core skeleton (week 1)
 
 Tasks:
-1. `createBlameSession()` on Pi's SDK with inline extensions and a custom `CredentialStore` (keychain on CLI).
+1. `createBlameSession()` on Pi's SDK with inline extensions and a custom `CredentialStore` (keychain on CLI: `KeychainKeyStore` in `apps/cli/src/keys/`, approved by David on 2026-11-15).
 2. Confirm: no `auth.json` written; Anthropic OAuth hidden. ChatGPT sign-in through the custom store is confirmed only if David has approved an open-source client (Week 0 blocker). If that decision is still open, ship BYOK-only and record the ChatGPT path as a follow-up (TRD FR-KEY-2).
 3. RPC child process mode for the extension: spawn, prompt, stream, `extension_ui_request` round trip.
 4. Check Node version available in VS Code, Cursor and Windsurf extension hosts (TRD OQ-5).
