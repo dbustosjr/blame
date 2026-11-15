@@ -15,6 +15,9 @@
       "@blame-ai/source": "./src/engine-client.ts",
       "types": "./dist/engine-client.d.ts",
       "default": "./dist/engine-client.js"
+    },
+    "./engine": {
+      "default": "./dist/rpc/main.js"
     }
   },
   "files": [
